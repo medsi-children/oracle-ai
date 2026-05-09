@@ -167,13 +167,14 @@ async def shop_app() -> str:
       align-items: center;
       justify-content: flex-start;
       gap: 12px;
-      font-size: 22px;
-      font-weight: 700;
-      color: var(--coin);
+      font-size: 34px;
+      line-height: 1.05;
+      font-weight: 800;
+      color: var(--text);
     }
     .balance-value .coin-amount {
       display: inline-block;
-      line-height: 1;
+      line-height: inherit;
     }
     .balance-value .coin-icon {
       width: 40px;
@@ -756,8 +757,8 @@ async def shop_app() -> str:
     function renderBalance(iconUrl, amount) {
       return `
         <span class="balance-value">
-          <img class="coin-icon loading-image" src="${escapeHTML(iconUrl)}" alt="PsyCoin" loading="eager" decoding="async" />
           <span class="coin-amount">${escapeHTML(amount)}</span>
+          <img class="coin-icon loading-image" src="${escapeHTML(iconUrl)}" alt="PsyCoin" loading="eager" decoding="async" />
         </span>
       `;
     }
