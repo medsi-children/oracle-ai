@@ -4,7 +4,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.schemas.message import MessageCreate, MessageResponse
 from app.schemas.user import UserCreate
-from app.services.dialogue import add_message, get_active_session, handle_user_text
+from app.services.dialogue import (
+    add_message,
+    first_contact_intro_animation,
+    get_active_session,
+    handle_user_text,
+)
 from app.services.users import get_or_create_user
 
 router = APIRouter()
@@ -40,4 +45,7 @@ async def create_message(payload: MessageCreate, db: AsyncSession = Depends(get_
         token_delta=token_delta,
         subjectivity_score=user.subjectivity_score,
         reply_markup=reply_markup,
+        intro_animation=first_contact_intro_animation()
+        if mode == "onboarding_start"
+        else None,
     )

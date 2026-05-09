@@ -6,7 +6,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.schemas.message import MessageResponse
 from app.schemas.user import UserCreate
-from app.services.dialogue import add_message, get_active_session, handle_user_text
+from app.services.dialogue import (
+    add_message,
+    first_contact_intro_animation,
+    get_active_session,
+    handle_user_text,
+)
 from app.services.users import get_or_create_user
 
 router = APIRouter()
@@ -71,4 +76,7 @@ async def telegram_webhook(update: dict[str, Any], db: AsyncSession = Depends(ge
         token_delta=token_delta,
         subjectivity_score=user.subjectivity_score,
         reply_markup=reply_markup,
+        intro_animation=first_contact_intro_animation()
+        if mode == "onboarding_start"
+        else None,
     )

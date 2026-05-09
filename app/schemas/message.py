@@ -20,6 +20,12 @@ class InlineKeyboardMarkup(BaseModel):
     inline_keyboard: list[list[InlineKeyboardButton]]
 
 
+class ChatAnimationStep(BaseModel):
+    text: str
+    duration_ms: int = 2200
+    parse_mode: str = "Markdown"
+
+
 class MessageResponse(BaseModel):
     user_id: UUID
     session_id: UUID
@@ -28,3 +34,4 @@ class MessageResponse(BaseModel):
     token_delta: int = 0
     subjectivity_score: int | None = None
     reply_markup: InlineKeyboardMarkup | None = None
+    intro_animation: list[ChatAnimationStep] | None = None

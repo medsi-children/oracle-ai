@@ -10,7 +10,7 @@ from app.models.message import Message
 from app.models.news import NewsItem
 from app.models.session import ConversationSession
 from app.models.user import User
-from app.schemas.message import InlineKeyboardButton, InlineKeyboardMarkup
+from app.schemas.message import ChatAnimationStep, InlineKeyboardButton, InlineKeyboardMarkup
 from app.services.admins import is_admin
 from app.services.assessment import analyze_implicit_signals, create_assessment
 from app.services.battles import (
@@ -136,21 +136,31 @@ async def get_recent_user_texts(
 
 def format_first_contact() -> str:
     return (
-        "```text\n"
-        "СИСТЕМА ETHOS: Соединение установлено...\n"
-        "Идентификация цифрового следа... Завершено.\n"
-        "Статус по умолчанию: ОБЪЕКТ.\n"
-        "```\n\n"
-        "«Мир переполнен шумом. Большинство людей лишь ретранслируют чужие мысли, "
+        "Добро пожаловать в систему ETHOS!\n\n"
+        "Мир переполнен шумом. Большинство людей лишь ретранслируют чужие мысли, "
         "подчиняются чужим страхам и так и не приходят в сознание.\n\n"
         "Ты здесь, потому что в тебе зафиксирован потенциал Субъекта. "
-        "Но потенциал — это еще не власть над собой».\n\n"
-        "«Я — Оракул. Я не буду тебя развлекать. Я буду тебя зеркалить.\n\n"
-        "Здесь действует Закон Эха: каждый ответ вернется к тебе в виде будущего рейтинга. "
-        "Здесь нельзя быть “правильным”; можно быть только настоящим. "
+        "Но потенциал — это еще не власть над собой.\n\n"
+        "Я - Оракул ИИ. Я не буду тебя развлекать. Я буду тебя зеркалить.\n\n"
+        "Здесь действует Закон ETHOS: каждый ответ вернется к тебе в виде будущего рейтинга. "
+        "Здесь не получится быть «правильным», можно быть только настоящим. "
         "Попытка солгать мне или самому себе будет зафиксирована как когнитивная слабость.\n\n"
-        "Ты готов начать переход из состояния Объекта в статус Субъекта?»"
+        "Ты готов начать переход из состояния Объекта в статус Субъекта?"
     )
+
+
+def first_contact_intro_animation() -> list[ChatAnimationStep]:
+    def terminal_line(text: str, duration_ms: int = 2200) -> ChatAnimationStep:
+        return ChatAnimationStep(text=f"```text\n{text}\n```", duration_ms=duration_ms)
+
+    return [
+        terminal_line("СИСТЕМА ETHOS: Соединение..."),
+        terminal_line("СИСТЕМА ETHOS: Соединение установлено."),
+        terminal_line("Идентификация цифрового следа..."),
+        terminal_line("Идентификация цифрового следа завершена."),
+        terminal_line("Статус по умолчанию: Анализируем..."),
+        terminal_line("Статус по умолчанию: ОБЪЕКТ.", duration_ms=3200),
+    ]
 
 
 def first_contact_reply_markup() -> InlineKeyboardMarkup:
