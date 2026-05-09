@@ -83,14 +83,19 @@ async def shop_app() -> str:
     }
     header {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) auto auto;
-      gap: 16px;
-      align-items: end;
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-areas:
+        "hero profile"
+        "balance balance";
+      gap: 14px 16px;
+      align-items: start;
       margin-bottom: 20px;
     }
     .hero {
+      grid-area: hero;
       display: grid;
       gap: 8px;
+      min-width: 0;
     }
     h1 {
       margin: 0;
@@ -107,6 +112,7 @@ async def shop_app() -> str:
       font-size: 14px;
     }
     .balance {
+      grid-area: balance;
       min-width: 170px;
       display: grid;
       gap: 6px;
@@ -118,11 +124,14 @@ async def shop_app() -> str:
       backdrop-filter: blur(18px);
     }
     .profile-button {
-      width: 54px;
-      height: 54px;
+      grid-area: profile;
+      width: 48px;
+      height: 48px;
       display: grid;
       place-items: center;
-      border-radius: 18px;
+      align-self: start;
+      justify-self: end;
+      border-radius: 16px;
       border: 1px solid var(--line);
       background: linear-gradient(180deg, rgba(44, 28, 38, .9), rgba(21, 15, 20, .96));
       box-shadow: var(--shadow);
@@ -135,32 +144,17 @@ async def shop_app() -> str:
       border-color: rgba(255, 184, 202, .34);
     }
     .profile-glyph {
-      width: 18px;
-      height: 18px;
-      border-radius: 999px;
-      border: 2px solid currentColor;
-      position: relative;
+      width: 22px;
+      height: 22px;
+      display: block;
     }
-    .profile-glyph::before,
-    .profile-glyph::after {
-      content: "";
-      position: absolute;
-      left: 50%;
-      transform: translateX(-50%);
-      border-radius: 999px;
-      border: 2px solid currentColor;
-    }
-    .profile-glyph::before {
-      top: -12px;
-      width: 10px;
-      height: 10px;
-      background: transparent;
-    }
-    .profile-glyph::after {
-      bottom: -10px;
-      width: 18px;
-      height: 10px;
-      border-top: 0;
+    .profile-glyph path,
+    .profile-glyph circle {
+      stroke: currentColor;
+      stroke-width: 1.8;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
     }
     .balance-label {
       color: var(--text-soft);
@@ -436,14 +430,15 @@ async def shop_app() -> str:
       gap: 18px;
     }
     .premium-head {
-      display: flex;
-      justify-content: space-between;
-      gap: 18px;
-      align-items: flex-start;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 220px;
+      gap: 24px;
+      align-items: start;
     }
     .premium-media {
-      width: 88px;
-      flex: 0 0 88px;
+      width: 220px;
+      max-width: 100%;
+      justify-self: end;
     }
     .profile-card {
       display: grid;
@@ -484,8 +479,19 @@ async def shop_app() -> str:
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      font-size: 22px;
+      font-size: 21px;
       color: var(--text);
+    }
+    .profile-balance-value {
+      gap: 10px;
+      font-size: 30px;
+      font-weight: 800;
+      color: var(--coin);
+    }
+    .profile-balance-value .coin-icon {
+      width: 24px;
+      height: 24px;
+      flex-basis: 24px;
     }
     .empty {
       border-radius: 22px;
@@ -495,9 +501,23 @@ async def shop_app() -> str:
       color: var(--text-soft);
     }
     @media (max-width: 840px) {
-      header { grid-template-columns: 1fr; }
+      header {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas:
+          "hero profile"
+          "balance balance";
+      }
       .balance { width: 100%; }
       .grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 720px) {
+      .premium-head {
+        grid-template-columns: 1fr;
+      }
+      .premium-media {
+        width: min(100%, 220px);
+        justify-self: center;
+      }
     }
     @media (max-width: 560px) {
       main {
@@ -531,6 +551,10 @@ async def shop_app() -> str:
       .profile-grid {
         grid-template-columns: 1fr;
       }
+      .profile-button {
+        width: 46px;
+        height: 46px;
+      }
     }
   </style>
 </head>
@@ -549,7 +573,10 @@ async def shop_app() -> str:
         <strong class="balance-value" id="balance">...</strong>
       </div>
       <button class="profile-button" id="profileButton" aria-label="Профиль">
-        <span class="profile-glyph" aria-hidden="true"></span>
+        <svg class="profile-glyph" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="8" r="3.5"></circle>
+          <path d="M5.5 18.5c1.6-3 4-4.5 6.5-4.5s4.9 1.5 6.5 4.5"></path>
+        </svg>
       </button>
     </header>
 
@@ -701,7 +728,7 @@ async def shop_app() -> str:
       profileBalance.innerHTML = coinMarkup(
         data.currency_icon_url,
         data.token_balance,
-        'price'
+        'price profile-balance-value'
       );
       profileSummary.textContent = data.profile_summary ||
         'Психологический портрет еще формируется.';
