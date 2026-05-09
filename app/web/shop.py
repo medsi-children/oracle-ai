@@ -482,16 +482,23 @@ async def shop_app() -> str:
       font-size: 21px;
       color: var(--text);
     }
+    #profileBalance {
+      display: block;
+      width: 100%;
+    }
     .profile-balance-value {
+      display: inline-flex;
+      align-items: center;
       gap: 10px;
-      font-size: 30px;
+      font-size: 38px;
+      line-height: 1;
       font-weight: 800;
       color: var(--coin);
     }
     .profile-balance-value .coin-icon {
-      width: 24px;
-      height: 24px;
-      flex-basis: 24px;
+      width: 32px;
+      height: 32px;
+      flex-basis: 32px;
     }
     .empty {
       border-radius: 22px;
