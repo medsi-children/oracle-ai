@@ -9,6 +9,7 @@ from app.models.session import ConversationSession
 from app.models.token import TokenLedgerEntry
 from app.models.user import User
 from app.services.admin_reset import find_user_for_reset, reset_user_profile
+from app.services.telegram_menu import sync_telegram_bot_commands
 
 
 VALID_STATUSES = {"object", "seeker", "faithful", "keeper", "sighted", "subject"}
@@ -25,7 +26,7 @@ def format_admin_error(text: str) -> str:
 
 
 def format_admin_help() -> str:
-    return (
+    return format_admin_success(
         "Админ-панель ETHOS\n\n"
         "/admin — показать эти команды\n"
         "/users [число] — последние пользователи\n"
@@ -38,6 +39,7 @@ def format_admin_help() -> str:
         "/close @username — закрыть активные сессии пользователя\n"
         "/shoplink @username — ссылка на mini-app магазина\n"
         "/summary — создать summary по завершенным диалогам\n\n"
+        "/synccommands — обновить меню команд Telegram\n\n"
         "Админский чат не проходит onboarding, не получает ETHOS-тесты и не попадает "
         "в рассылки/summary."
     )
@@ -241,4 +243,9 @@ async def handle_admin_tool_command(db: AsyncSession, admin: User, clean: str) -
         return await close_sessions_command(db, clean)
     if command == "/shoplink":
         return await shoplink_command(db, clean)
+    if command == "/synccommands":
+        result = await sync_telegram_bot_commands()
+        if result.startswith("Меню команд Telegram обновлено."):
+            return format_admin_success(result)
+        return format_admin_error(result)
     return None

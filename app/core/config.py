@@ -11,6 +11,7 @@ class Settings(BaseSettings):
 
     openrouter_api_key: str = ""
     openrouter_model: str = "openai/gpt-oss-120b:free"
+    telegram_bot_token: str = ""
 
     admin_telegram_username: str = "medsi_children"
     admin_telegram_ids: str = "7659888703"
