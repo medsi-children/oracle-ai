@@ -10,6 +10,7 @@ from app.models.message import Message
 from app.models.session import ConversationSession
 from app.models.summary import Summary
 from app.models.user import User
+from app.services.admins import is_admin
 from app.services.llm import openrouter_chat
 
 
@@ -68,6 +69,10 @@ async def create_due_summaries(db: AsyncSession, *, older_than_minutes: int = 60
     )
     created: list[Summary] = []
     for session, user in result.all():
+        if is_admin(user):
+            session.summary = "Admin session skipped."
+            session.state = "closed"
+            continue
         text = await build_session_summary(db, session, user)
         session.summary = text
         session.state = "closed"

@@ -11,8 +11,8 @@ from app.models.news import NewsItem
 from app.models.session import ConversationSession
 from app.models.user import User
 from app.schemas.message import ChatAnimationStep, InlineKeyboardButton, InlineKeyboardMarkup
-from app.services.admin_reset import find_user_for_reset, reset_user_profile
 from app.services.admins import is_admin
+from app.services.admin_tools import format_admin_help, handle_admin_tool_command
 from app.services.assessment import analyze_implicit_signals, create_assessment
 from app.services.battles import (
     create_battle,
@@ -276,31 +276,7 @@ def format_help() -> str:
         "/shop — PsyCoin Shop\n"
         "/buy 1 — купить предмет, привилегию или Сферу Мудрости\n"
         "/profile — посмотреть профиль и баланс\n"
-        "/reset @username — админ: полностью обнулить профиль пользователя\n"
         "/help — показать это меню"
-    )
-
-
-async def handle_reset_command(db: AsyncSession, admin: User, clean: str) -> str:
-    if not is_admin(admin):
-        return "Эта команда доступна только администратору."
-
-    parts = clean.split(maxsplit=1)
-    if len(parts) < 2 or not parts[1].strip():
-        return "Формат: /reset @username или /reset telegram_id"
-
-    target = await find_user_for_reset(db, parts[1].strip())
-    if target is None:
-        return "Пользователь не найден. Проверь username или Telegram ID."
-    if target.id == admin.id:
-        return "Свой профиль через /reset лучше не стирать. Для этого используйте прямой SQL."
-
-    username = f"@{target.username}" if target.username else f"id {target.telegram_id}"
-    await reset_user_profile(db, target)
-    return (
-        f"Профиль {username} полностью обнулен.\n\n"
-        "Удалены история диалогов, сессии, оценки, summary, покупки и ledger псикоинов. "
-        "Статус: Объект. Баланс: 0."
     )
 
 
@@ -328,6 +304,29 @@ async def handle_user_text(
 ) -> tuple[str, str, int, InlineKeyboardMarkup | None]:
     clean = text.strip()
     command = clean.split(maxsplit=1)[0].lower()
+    admin_user = is_admin(user)
+
+    if admin_user:
+        if session.state != "active":
+            session.state = "active"
+        if command == "/start":
+            return format_admin_help(), "admin_start", 0, None
+        admin_reply = await handle_admin_tool_command(db, user, clean)
+        if admin_reply is not None:
+            return admin_reply, "admin_command", 0, None
+        if command == "/case":
+            case = await get_random_case(db)
+            return "Админ-превью кейса\n\n" + format_case(case), "admin_case_preview", 0, None
+        if command == "/news":
+            item = await get_or_create_news_case(db)
+            return (
+                "Админ-превью Sentinel Mode\n\n"
+                f"{item.ethical_case}\n\n"
+                f"Источник: {item.source_url}",
+                "admin_news_preview",
+                0,
+                None,
+            )
 
     if command == "/start":
         session.state = "onboarding:consent"
@@ -387,7 +386,7 @@ async def handle_user_text(
     if command in {"/profile", "/status"}:
         return format_profile(user), "profile", 0, None
     if command == "/reset":
-        return await handle_reset_command(db, user, clean), "admin_reset", 0, None
+        return "Эта команда доступна только администратору.", "forbidden", 0, None
     if command in {"/summary", "/summaries"}:
         if not is_admin(user):
             return "Эта команда доступна только администратору.", "forbidden", 0, None
@@ -563,14 +562,15 @@ async def handle_user_text(
         )
 
     reply = await build_supportive_reply_with_context(db, session=session, text=clean)
-    await create_assessment(
-        db,
-        user=user,
-        text=clean,
-        source="support_signal",
-        session_id=session.id,
-        implicit_signals=analyze_implicit_signals(clean),
-        use_llm=False,
-        award_tokens=False,
-    )
+    if not admin_user:
+        await create_assessment(
+            db,
+            user=user,
+            text=clean,
+            source="support_signal",
+            session_id=session.id,
+            implicit_signals=analyze_implicit_signals(clean),
+            use_llm=False,
+            award_tokens=False,
+        )
     return reply, "support", 0, None
