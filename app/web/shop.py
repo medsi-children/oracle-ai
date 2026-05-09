@@ -505,18 +505,19 @@ async def shop_app() -> str:
     .profile-balance-value {
       display: inline-flex;
       align-items: center;
-      gap: 10px;
-      font-size: 42px;
-      line-height: 1.05;
-      font-weight: 800;
-      color: var(--coin);
+      gap: 8px;
+      font-size: inherit;
+      line-height: inherit;
+      font-weight: inherit;
+      color: var(--text);
     }
     .profile-balance-value .coin-amount {
       display: inline-block;
-      font-size: 42px;
-      line-height: 1.05;
-      font-weight: 800;
-      letter-spacing: 0;
+      font-size: inherit;
+      line-height: inherit;
+      font-weight: inherit;
+      letter-spacing: inherit;
+      color: inherit;
     }
     .profile-balance-value .coin-icon {
       width: 24px;
