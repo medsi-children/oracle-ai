@@ -42,6 +42,7 @@ async def answer_case(payload: CaseAnswerCreate, db: AsyncSession = Depends(get_
         text=payload.answer,
         source="case_answer",
         case_id=case.id,
+        case_prompt=case.prompt,
     )
     await db.commit()
     return AssessmentRead(

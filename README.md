@@ -10,6 +10,9 @@ Backend MVP для Telegram-платформы **Оракул ИИ**.
 - Alembic migrations
 - Docker Compose
 - базовые сущности: users, sessions, messages, cases, assessments, token ledger
+- ETHOS first-contact flow и скрытая аналитика ответа
+- PsyCoin Shop: collectibles, привилегии, персональные рекомендации
+- групповые баттлы со ставкой 1 псикоин
 - HTTP API, который позже сможет дергать n8n
 
 ## Быстрый старт
@@ -89,14 +92,17 @@ curl -X POST http://localhost:8000/api/v1/telegram/webhook \
 
 ## Команды Telegram MVP
 
-- `/start` — старт и idle-режим поддержки.
+- `/start` — протокол первого контакта ETHOS и калибровочный кейс №0.
 - `/help` — список команд.
-- `/case` — этический кейс с AI-разбором и токенами.
-- `/news` — Sentinel Mode: новостной этический кейс с AI-разбором и токенами.
-- `/profile` — статус, индекс рефлексии, баланс токенов.
-- `/battle [тема]` — создает заготовку баттла в базе. В группе сохраняет `telegram_chat_id`.
-- `/shop` — плейсхолдер маркетплейса collectibles.
-- `/buy 1` — тестовая покупка за токены.
+- `/case` — этический кейс с уточнением, AI-разбором и псикоинами.
+- `/news` — Sentinel Mode: реальная новость через RSS как этический кейс.
+- `/profile` — статус, индекс субъектности, баланс псикоинов.
+- `/battle` — создает баттл на тему Оракула.
+- `/battle [тема]` — баттл на свою тему, если куплена привилегия.
+- `/joinbattle` — присоединиться вторым участником.
+- `/finishbattle` — завершить баттл, распределить ставку и бонусы роста.
+- `/shop` — PsyCoin Shop.
+- `/buy 1` — покупка предмета, привилегии или персональной рекомендации.
 - `/summary` — ручная admin-команда для `medsi_children`.
 
 Админ сейчас задан по Telegram ID:
@@ -118,6 +124,12 @@ API магазина:
 ```text
 GET  /api/v1/marketplace/state?telegram_id=7659888703
 POST /api/v1/marketplace/buy
+```
+
+Для ссылки на закрытую группу после первого тестирования задайте:
+
+```env
+CLOSED_GROUP_INVITE_URL=https://t.me/+...
 ```
 
 Для настоящего Telegram Mini App понадобится публичный HTTPS URL. Варианты:

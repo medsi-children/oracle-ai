@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     admin_telegram_username: str = "medsi_children"
     admin_telegram_ids: str = "7659888703"
     public_webapp_url: str = "http://localhost:8000/app/shop"
+    closed_group_invite_url: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
