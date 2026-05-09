@@ -3,14 +3,15 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.models.message import Message
 from app.models.session import ConversationSession
 from app.models.summary import Summary
 from app.models.user import User
-from app.services.admins import is_admin
+from app.services.admins import admin_ids, is_admin
 from app.services.llm import openrouter_chat
 
 
@@ -91,8 +92,24 @@ async def create_due_summaries(db: AsyncSession, *, older_than_minutes: int = 60
 
 async def get_unsent_summaries(db: AsyncSession) -> list[Summary]:
     await create_due_summaries(db)
+    ids = admin_ids()
+    admin_username = settings.admin_telegram_username.lower()
+
+    admin_filters = [
+        func.lower(func.coalesce(User.username, "")) != admin_username,
+    ]
+    if ids:
+        admin_filters.append(or_(User.telegram_id.is_(None), User.telegram_id.not_in(ids)))
+
     result = await db.execute(
-        select(Summary).where(Summary.is_sent.is_(False)).order_by(Summary.created_at.asc()).limit(20)
+        select(Summary)
+        .join(User, User.id == Summary.user_id)
+        .where(
+            Summary.is_sent.is_(False),
+            *admin_filters,
+        )
+        .order_by(Summary.created_at.asc())
+        .limit(20)
     )
     return list(result.scalars().all())
 
