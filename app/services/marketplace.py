@@ -80,10 +80,10 @@ SEED_ITEMS = [
         "asset_slug": "diamond-heart",
     },
     {
-        "title": "🎙 Право своей темы баттла",
+        "title": "👑 Премиум",
         "description": (
-            "Привилегия предлагать собственную тему баттла в группе вместо темы, "
-            "созданной Оракулом."
+            "Открывает право задавать собственную тему баттла и дает доступ "
+            "к привилегии внутри системы ETHOS."
         ),
         "price_tokens": 120,
         "item_type": "privilege_custom_battle_topic",
@@ -396,9 +396,9 @@ async def purchase_item(
 
 async def format_shop(db: AsyncSession, user: User) -> str:
     items = await list_active_items(db, user)
-    lines = ["PsyCoin Shop ETHOS", ""]
-    for idx, item in enumerate(items, start=1):
-        lines.append(f"{idx}. {item.title} — {item.price_tokens} псикоинов\n{item.description}")
+    lines = ["Магазин", ""]
+    for item in items:
+        lines.append(f"{item.title} — {item.price_tokens} псикоинов\n{item.description}")
     lines.append("\nДля покупки: /buy 1")
     return "\n\n".join(lines)
 

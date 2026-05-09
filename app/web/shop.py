@@ -11,267 +11,273 @@ async def shop_app() -> str:
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>PsyCoin Shop</title>
+  <title>Магазин</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
     :root {
       color-scheme: dark;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system,
-        BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #090b0e;
-      color: #edf2ee;
-      --panel: #101417;
-      --panel-2: #151a1d;
-      --line: #293137;
-      --text-soft: #aeb9b4;
-      --coin: #d8b76f;
-      --mint: #62d69b;
-      --rose: #c46a78;
-      --violet: #8b7cff;
+      font-family: "Avenir Next", "Helvetica Neue", system-ui, sans-serif;
+      --bg-1: #130f15;
+      --bg-2: #1b1318;
+      --panel: rgba(31, 21, 28, .78);
+      --panel-strong: rgba(39, 26, 35, .92);
+      --line: rgba(255, 214, 228, .12);
+      --text: #f8eef2;
+      --text-soft: #cab8c0;
+      --accent: #f6b8ca;
+      --accent-strong: #ff8fb1;
+      --accent-deep: #7e4358;
+      --coin: #ffd8a1;
+      --shadow: 0 22px 60px rgba(0, 0, 0, .35);
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
       min-height: 100vh;
+      color: var(--text);
       background:
-        linear-gradient(180deg, rgba(9, 11, 14, .95), rgba(13, 17, 15, .98)),
-        repeating-linear-gradient(90deg, rgba(255,255,255,.035) 0 1px, transparent 1px 48px),
-        repeating-linear-gradient(0deg, rgba(255,255,255,.025) 0 1px, transparent 1px 48px);
-      color: #edf2ee;
+        radial-gradient(circle at top, rgba(255, 143, 177, .16), transparent 28%),
+        radial-gradient(circle at 78% 22%, rgba(246, 184, 202, .12), transparent 24%),
+        linear-gradient(180deg, var(--bg-1), #0d0b10 74%);
       overflow-x: hidden;
     }
-    body::before {
+    body::before,
+    body::after {
       content: "";
       position: fixed;
       inset: 0;
       pointer-events: none;
-      background-image:
-        radial-gradient(circle at 20% 18%, rgba(216,183,111,.34) 0 1px, transparent 1.5px),
-        radial-gradient(circle at 78% 22%, rgba(98,214,155,.32) 0 1px, transparent 1.5px),
-        radial-gradient(circle at 62% 70%, rgba(196,106,120,.28) 0 1px, transparent 1.5px),
-        radial-gradient(circle at 35% 82%, rgba(139,124,255,.28) 0 1px, transparent 1.5px);
-      background-size: 220px 220px, 260px 260px, 310px 310px, 280px 280px;
-      animation: drift 22s linear infinite;
-      opacity: .55;
+    }
+    body::before {
+      background:
+        radial-gradient(circle at 20% 18%, rgba(255,255,255,.11) 0 1px, transparent 1.5px),
+        radial-gradient(circle at 72% 28%, rgba(255,255,255,.09) 0 1px, transparent 1.5px),
+        radial-gradient(circle at 38% 76%, rgba(255,255,255,.08) 0 1px, transparent 1.5px);
+      background-size: 220px 220px, 290px 290px, 260px 260px;
+      animation: drift 26s linear infinite;
+      opacity: .5;
+    }
+    body::after {
+      background:
+        linear-gradient(120deg, transparent, rgba(255,255,255,.04), transparent);
+      transform: translateX(-120%);
+      animation: veil 13s ease-in-out infinite;
+      opacity: .35;
     }
     @keyframes drift {
       from { transform: translate3d(0, 0, 0); }
-      to { transform: translate3d(-36px, 28px, 0); }
+      to { transform: translate3d(-28px, 24px, 0); }
+    }
+    @keyframes veil {
+      0%, 70% { transform: translateX(-120%); }
+      100% { transform: translateX(120%); }
     }
     main {
-      width: min(980px, 100%);
+      width: min(1080px, 100%);
       margin: 0 auto;
-      padding: 18px;
+      padding:
+        max(34px, calc(env(safe-area-inset-top, 0px) + 26px))
+        18px
+        28px;
       position: relative;
     }
     header {
       display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 14px;
-      align-items: start;
-      padding: 8px 0 14px;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 16px;
+      align-items: end;
+      margin-bottom: 20px;
+    }
+    .hero {
+      display: grid;
+      gap: 8px;
     }
     h1 {
-      font-size: clamp(28px, 7vw, 48px);
-      line-height: .96;
-      margin: 0 0 8px;
-      letter-spacing: 0;
-    }
-    h2 {
-      font-size: 17px;
-      line-height: 1.2;
       margin: 0;
+      font-size: clamp(32px, 8vw, 56px);
+      line-height: .95;
       letter-spacing: 0;
+      font-weight: 700;
     }
-    .muted {
+    .subline {
+      margin: 0;
+      max-width: 680px;
       color: var(--text-soft);
-      margin: 0;
-      line-height: 1.45;
-      max-width: 620px;
+      line-height: 1.5;
+      font-size: 14px;
     }
     .balance {
-      min-width: 154px;
-      padding: 12px;
-      background: rgba(16, 20, 23, .86);
+      min-width: 170px;
+      display: grid;
+      gap: 6px;
+      padding: 14px 16px;
+      border-radius: 18px;
       border: 1px solid var(--line);
-      border-radius: 8px;
-      text-align: right;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
+      background: linear-gradient(180deg, rgba(44, 28, 38, .9), rgba(21, 15, 20, .96));
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
     }
-    .balance span {
-      display: block;
+    .balance-label {
       color: var(--text-soft);
       font-size: 12px;
-      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
     }
-    .balance strong {
-      color: var(--coin);
-      font-size: 20px;
-      white-space: nowrap;
-    }
-    .test-id {
-      display: grid;
-      grid-template-columns: 160px 1fr;
-      gap: 10px;
+    .balance-value {
+      display: inline-flex;
       align-items: center;
-      margin: 4px 0 14px;
-      padding: 10px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: rgba(16, 20, 23, .62);
+      justify-content: flex-end;
+      gap: 10px;
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--coin);
     }
-    label { color: var(--text-soft); font-size: 13px; }
-    input {
-      width: 100%;
-      min-height: 42px;
-      padding: 10px 12px;
-      border-radius: 8px;
-      border: 1px solid #354047;
-      background: #090b0e;
-      color: #edf2ee;
-      outline: none;
+    .coin-icon {
+      width: 20px;
+      height: 20px;
+      object-fit: contain;
+      flex: 0 0 20px;
     }
-    input:focus { border-color: var(--mint); }
     .tabs {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 8px;
-      margin: 14px 0;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 16px;
     }
     .tab, .buy {
-      min-height: 42px;
+      min-height: 48px;
+      border-radius: 14px;
       border: 1px solid var(--line);
-      border-radius: 8px;
-      background: #12171a;
-      color: #dce5df;
-      font-weight: 800;
+      background: rgba(31, 21, 28, .78);
+      color: var(--text);
+      font-weight: 700;
       cursor: pointer;
-      transition: transform .16s ease, border-color .16s ease, background .16s ease;
+      transition:
+        transform .18s ease,
+        border-color .18s ease,
+        background .18s ease,
+        box-shadow .18s ease;
     }
-    .tab:hover, .buy:hover { transform: translateY(-1px); border-color: #526067; }
+    .tab:hover, .buy:hover {
+      transform: translateY(-1px);
+      border-color: rgba(255, 184, 202, .32);
+      box-shadow: 0 10px 24px rgba(0, 0, 0, .22);
+    }
     .tab.active {
-      color: #07110c;
-      background: var(--mint);
-      border-color: var(--mint);
+      color: #2b1520;
+      background: linear-gradient(180deg, var(--accent), var(--accent-strong));
+      border-color: rgba(255, 184, 202, .65);
     }
     .notice {
       min-height: 22px;
-      color: var(--coin);
+      margin: 6px 0 16px;
+      color: #ffd3df;
       white-space: pre-wrap;
-      line-height: 1.35;
-      margin: 10px 0 12px;
+      line-height: 1.42;
     }
     .panel { display: none; }
     .panel.active { display: block; }
     .grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
+      gap: 14px;
     }
-    .item {
-      min-height: 184px;
-      display: grid;
-      grid-template-rows: auto 1fr auto;
-      gap: 10px;
-      padding: 14px;
+    .card {
+      position: relative;
+      overflow: hidden;
+      border-radius: 22px;
       border: 1px solid var(--line);
-      border-radius: 8px;
-      background: rgba(18, 23, 26, .92);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
-      position: relative;
-      overflow: hidden;
+      background: linear-gradient(180deg, rgba(36, 24, 32, .96), rgba(20, 14, 19, .98));
+      box-shadow: var(--shadow);
+      padding: 18px;
     }
-    .item-media {
-      aspect-ratio: 1 / 1;
-      width: 88px;
-      min-width: 88px;
-      border-radius: 8px;
-      border: 1px solid #313a40;
-      background:
-        radial-gradient(circle at 30% 30%, rgba(216,183,111,.22), transparent 55%),
-        linear-gradient(180deg, #14191c, #0f1316);
-      object-fit: cover;
-      overflow: hidden;
-      position: relative;
-      z-index: 1;
-    }
-    .item-media.sphere {
-      animation: spherePulse 2.8s ease-in-out infinite;
-      box-shadow:
-        0 0 0 0 rgba(216,183,111,.18),
-        0 0 24px rgba(98,214,155,.16);
-    }
-    @keyframes spherePulse {
-      0%, 100% {
-        transform: scale(1);
-        box-shadow:
-          0 0 0 0 rgba(216,183,111,.16),
-          0 0 24px rgba(98,214,155,.14);
-      }
-      50% {
-        transform: scale(1.04);
-        box-shadow:
-          0 0 0 12px rgba(216,183,111,0),
-          0 0 34px rgba(98,214,155,.24);
-      }
-    }
-    .item::after {
+    .card::after {
       content: "";
       position: absolute;
       inset: 0;
       background: linear-gradient(
-        120deg,
-        transparent 0 35%,
-        rgba(255,255,255,.06) 50%,
-        transparent 65% 100%
+        140deg,
+        transparent 0 45%,
+        rgba(255,255,255,.05) 52%,
+        transparent 64% 100%
       );
       transform: translateX(-120%);
-      animation: sheen 7s ease-in-out infinite;
+      animation: sheen 8s ease-in-out infinite;
       pointer-events: none;
     }
     @keyframes sheen {
-      0%, 68% { transform: translateX(-120%); }
-      82%, 100% { transform: translateX(120%); }
+      0%, 76% { transform: translateX(-120%); }
+      100% { transform: translateX(120%); }
+    }
+    .item {
+      min-height: 250px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 14px;
+    }
+    .item-head {
+      display: grid;
+      grid-template-columns: 110px minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+      position: relative;
+      z-index: 1;
+    }
+    .item-media {
+      width: 110px;
+      aspect-ratio: 1 / 1;
+      object-fit: cover;
+      border-radius: 18px;
+      border: 1px solid rgba(255, 214, 228, .18);
+      background:
+        radial-gradient(circle at 30% 30%, rgba(255,255,255,.16), transparent 52%),
+        linear-gradient(180deg, #2d1b25, #151017);
+      box-shadow: 0 18px 30px rgba(0, 0, 0, .28);
+    }
+    .item-copy {
+      display: grid;
+      gap: 10px;
+      min-width: 0;
     }
     .item-top {
       display: flex;
       justify-content: space-between;
       gap: 10px;
       align-items: flex-start;
-      position: relative;
-      z-index: 1;
     }
-    .item-head {
-      display: flex;
-      gap: 12px;
-      align-items: flex-start;
-      position: relative;
-      z-index: 1;
-    }
-    .item-copy {
-      display: grid;
-      gap: 8px;
-      min-width: 0;
+    h2 {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.18;
+      letter-spacing: 0;
     }
     .badge {
       display: inline-flex;
       align-items: center;
-      min-height: 24px;
-      padding: 4px 8px;
+      min-height: 26px;
+      padding: 4px 10px;
       border-radius: 999px;
-      border: 1px solid #3a464c;
-      color: #d7dfda;
+      border: 1px solid rgba(255, 214, 228, .16);
+      color: #f7d3df;
       font-size: 12px;
       white-space: nowrap;
-      background: #0c1012;
+      background: rgba(255, 255, 255, .03);
     }
-    .badge.recommendation { border-color: rgba(98,214,155,.55); color: var(--mint); }
-    .badge.privilege { border-color: rgba(139,124,255,.55); color: #c7c0ff; }
-    .badge.collectible { border-color: rgba(216,183,111,.55); color: var(--coin); }
-    .item p {
-      color: #bac5bf;
+    .badge.collectible { color: #ffe1b7; }
+    .badge.recommendation { color: #ffd5ef; }
+    .badge.privilege { color: #ffd1dc; }
+    .item p, .profile-copy, .premium-copy {
       margin: 0;
-      line-height: 1.42;
+      color: var(--text-soft);
+      line-height: 1.5;
+      position: relative;
+      z-index: 1;
+    }
+    .item-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
       position: relative;
       z-index: 1;
     }
@@ -280,88 +286,207 @@ async def shop_app() -> str:
       align-items: center;
       gap: 8px;
       color: var(--coin);
-      font-weight: 900;
+      font-weight: 800;
       white-space: nowrap;
-      position: relative;
-      z-index: 1;
-    }
-    .coin-icon {
-      width: 18px;
-      height: 18px;
-      object-fit: contain;
-      flex: 0 0 18px;
     }
     .buy {
-      width: 100%;
-      background: #1a221c;
-      color: var(--mint);
-      border-color: rgba(98,214,155,.55);
-      position: relative;
-      z-index: 1;
+      min-width: 154px;
+      padding: 0 18px;
+      background: linear-gradient(180deg, rgba(255, 184, 202, .18), rgba(255, 143, 177, .12));
+      color: #ffe9f0;
+      border-color: rgba(255, 184, 202, .3);
     }
-    .buy:disabled { opacity: .45; cursor: default; transform: none; }
-    .empty {
-      border: 1px dashed #38444b;
-      border-radius: 8px;
-      padding: 18px;
-      color: var(--text-soft);
-      background: rgba(16, 20, 23, .7);
+    .buy:disabled {
+      opacity: .45;
+      cursor: default;
+      transform: none;
+      box-shadow: none;
     }
-    .item-meta {
-      display: flex;
-      justify-content: space-between;
-      gap: 10px;
-      align-items: center;
+    .wisdom-stage {
+      min-height: 64vh;
+      display: grid;
+      place-items: center;
     }
-    .profile {
+    .wisdom-shell {
+      width: min(100%, 560px);
+      display: grid;
+      gap: 22px;
+      justify-items: center;
+      text-align: center;
+      padding: 30px 20px 26px;
+    }
+    .sphere-wrap {
+      width: min(78vw, 340px);
+      aspect-ratio: 1 / 1;
+      display: grid;
+      place-items: center;
+      border-radius: 999px;
+      background:
+        radial-gradient(circle, rgba(255, 184, 202, .14), rgba(255, 184, 202, 0) 62%);
+      animation: aura 4s ease-in-out infinite;
+    }
+    .sphere-image {
+      width: min(74vw, 300px);
+      aspect-ratio: 1 / 1;
+      object-fit: cover;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 214, 228, .22);
+      box-shadow:
+        0 0 0 0 rgba(255, 184, 202, .2),
+        0 0 36px rgba(255, 184, 202, .16),
+        0 24px 48px rgba(0, 0, 0, .3);
+      animation: spherePulse 2.8s ease-in-out infinite;
+    }
+    @keyframes aura {
+      0%, 100% { transform: scale(1); opacity: .9; }
+      50% { transform: scale(1.06); opacity: 1; }
+    }
+    @keyframes spherePulse {
+      0%, 100% {
+        transform: scale(1);
+        box-shadow:
+          0 0 0 0 rgba(255, 184, 202, .18),
+          0 0 36px rgba(255, 184, 202, .16),
+          0 24px 48px rgba(0, 0, 0, .3);
+      }
+      50% {
+        transform: scale(1.04);
+        box-shadow:
+          0 0 0 18px rgba(255, 184, 202, 0),
+          0 0 48px rgba(255, 184, 202, .28),
+          0 28px 58px rgba(0, 0, 0, .32);
+      }
+    }
+    .wisdom-copy {
       display: grid;
       gap: 10px;
-      padding: 14px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: rgba(18, 23, 26, .92);
+      max-width: 480px;
     }
-    .profile-line {
+    .wisdom-copy h2 {
+      font-size: clamp(28px, 6vw, 42px);
+    }
+    .wisdom-buy {
+      min-width: 220px;
+      justify-self: center;
+    }
+    .premium-stage, .profile-stage {
+      display: grid;
+      gap: 16px;
+    }
+    .premium-card {
+      display: grid;
+      gap: 18px;
+    }
+    .premium-head {
       display: flex;
       justify-content: space-between;
       gap: 12px;
-      padding: 10px 0;
-      border-bottom: 1px solid #222b30;
+      align-items: flex-start;
     }
-    .profile-line:last-child { border-bottom: 0; }
-    .profile-line span { color: var(--text-soft); }
-    .profile-line strong { text-align: right; }
-    @media (max-width: 680px) {
-      main { padding: 14px; }
+    .profile-card {
+      display: grid;
+      gap: 18px;
+    }
+    .profile-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      width: fit-content;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255, 184, 202, .09);
+      border: 1px solid rgba(255, 184, 202, .18);
+      color: #ffd6e5;
+      font-size: 13px;
+    }
+    .profile-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .profile-metric {
+      padding: 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 214, 228, .1);
+      background: rgba(255, 255, 255, .03);
+    }
+    .profile-metric span {
+      display: block;
+      color: var(--text-soft);
+      font-size: 12px;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+    .profile-metric strong {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 22px;
+      color: var(--text);
+    }
+    .empty {
+      border-radius: 22px;
+      border: 1px dashed rgba(255, 214, 228, .16);
+      background: rgba(255, 255, 255, .03);
+      padding: 22px;
+      color: var(--text-soft);
+    }
+    @media (max-width: 840px) {
       header { grid-template-columns: 1fr; }
-      .balance { text-align: left; width: 100%; }
-      .test-id { grid-template-columns: 1fr; }
+      .balance { width: 100%; }
       .grid { grid-template-columns: 1fr; }
-      .tabs { gap: 6px; }
-      .tab { font-size: 13px; padding-inline: 6px; }
+      .tabs {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+    @media (max-width: 560px) {
+      main {
+        padding:
+          max(34px, calc(env(safe-area-inset-top, 0px) + 26px))
+          14px
+          24px;
+      }
+      .item-head {
+        grid-template-columns: 1fr;
+      }
+      .item-media {
+        width: 100%;
+        max-width: 160px;
+      }
+      .item-meta {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .buy {
+        width: 100%;
+      }
+      .profile-grid {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
 <body>
   <main>
     <header>
-      <div>
-        <h1>PsyCoin Shop</h1>
-        <p class="muted">
-          Коллекционные предметы, привилегии баттлов и персональные рекомендации ETHOS.
+      <div class="hero">
+        <h1>Магазин</h1>
+        <p class="subline">
+          Коллекционные предметы, подписки и мудрость оракула
+          (персональные рекомендации)
         </p>
       </div>
-      <div class="balance"><span>Баланс</span><strong id="balance">...</strong></div>
+      <div class="balance">
+        <span class="balance-label">Баланс</span>
+        <strong class="balance-value" id="balance">...</strong>
+      </div>
     </header>
-
-    <div class="test-id">
-      <label for="telegramId">Telegram ID</label>
-      <input id="telegramId" inputmode="numeric" placeholder="7659888703" />
-    </div>
 
     <nav class="tabs" aria-label="Разделы магазина">
       <button class="tab active" data-tab="shop">Магазин</button>
-      <button class="tab" data-tab="inventory">Инвентарь</button>
+      <button class="tab" data-tab="wisdom">Мудрость</button>
+      <button class="tab" data-tab="premium">👑 Премиум</button>
       <button class="tab" data-tab="profile">Профиль</button>
     </nav>
 
@@ -371,17 +496,44 @@ async def shop_app() -> str:
       <div class="grid" id="items"></div>
     </section>
 
-    <section class="panel" id="inventoryPanel">
-      <div class="grid" id="purchases"></div>
+    <section class="panel" id="wisdomPanel">
+      <div class="wisdom-stage">
+        <div class="card wisdom-shell">
+          <div class="sphere-wrap">
+            <img class="sphere-image" id="wisdomImage" src="" alt="Сфера Мудрости" />
+          </div>
+          <div class="wisdom-copy">
+            <h2 id="wisdomTitle">Сфера Мудрости</h2>
+            <p class="profile-copy" id="wisdomDescription"></p>
+          </div>
+          <div class="item-meta">
+            <div id="wisdomPrice"></div>
+            <button class="buy wisdom-buy" id="wisdomBuyButton">Узнать о себе</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="premiumPanel">
+      <div class="premium-stage" id="premiumBox"></div>
     </section>
 
     <section class="panel" id="profilePanel">
-      <div class="profile">
-        <div class="profile-line"><span>Telegram ID</span><strong id="profileId">...</strong></div>
-        <div class="profile-line"><span>Статус</span><strong id="profileStatus">...</strong></div>
-        <div class="profile-line"><span>Индекс</span><strong id="profileScore">...</strong></div>
-        <div class="profile-line"><span>Баланс</span><strong id="profileBalance">...</strong></div>
-        <p class="muted" id="profileSummary"></p>
+      <div class="profile-stage">
+        <div class="card profile-card">
+          <div class="profile-status" id="profileStatus">...</div>
+          <div class="profile-grid">
+            <div class="profile-metric">
+              <span>Индекс субъектности</span>
+              <strong id="profileScore">...</strong>
+            </div>
+            <div class="profile-metric">
+              <span>Баланс</span>
+              <strong id="profileBalance">...</strong>
+            </div>
+          </div>
+          <p class="profile-copy" id="profileSummary"></p>
+        </div>
       </div>
     </section>
   </main>
@@ -392,18 +544,23 @@ async def shop_app() -> str:
     tg?.expand();
 
     const qs = new URLSearchParams(location.search);
-    const input = document.getElementById('telegramId');
+    const telegramId = String(
+      qs.get('telegram_id') || tg?.initDataUnsafe?.user?.id || ''
+    ).trim();
+
     const balance = document.getElementById('balance');
-    const profileId = document.getElementById('profileId');
     const profileStatus = document.getElementById('profileStatus');
     const profileScore = document.getElementById('profileScore');
     const profileBalance = document.getElementById('profileBalance');
     const profileSummary = document.getElementById('profileSummary');
     const itemsBox = document.getElementById('items');
-    const purchasesBox = document.getElementById('purchases');
+    const premiumBox = document.getElementById('premiumBox');
     const notice = document.getElementById('notice');
-
-    input.value = qs.get('telegram_id') || tg?.initDataUnsafe?.user?.id || '';
+    const wisdomImage = document.getElementById('wisdomImage');
+    const wisdomTitle = document.getElementById('wisdomTitle');
+    const wisdomDescription = document.getElementById('wisdomDescription');
+    const wisdomPrice = document.getElementById('wisdomPrice');
+    const wisdomBuyButton = document.getElementById('wisdomBuyButton');
 
     const statusLabels = {
       object: 'Объект',
@@ -426,63 +583,73 @@ async def shop_app() -> str:
 
     function typeLabel(type) {
       if (type === 'wisdom_sphere') return ['recommendation', 'Сфера'];
-      if (type.startsWith('recommendation_')) return ['recommendation', 'Рекомендация'];
-      if (type.startsWith('privilege_')) return ['privilege', 'Привилегия'];
+      if (type.startsWith('privilege_')) return ['privilege', 'Подписка'];
       return ['collectible', 'Коллекция'];
     }
 
-    function buyLabel(type) {
-      return type === 'wisdom_sphere' ? 'Узнать о себе' : 'Купить';
-    }
-
-    function coinMarkup(iconUrl, amount) {
+    function coinMarkup(iconUrl, amount, className = 'price') {
       return `
-        <span class="price">
+        <span class="${className}">
           <img class="coin-icon" src="${escapeHTML(iconUrl)}" alt="PsyCoin" />
           ${escapeHTML(amount)}
         </span>
       `;
     }
 
-    function id() { return input.value.trim(); }
+    function renderBalance(iconUrl, amount) {
+      return `
+        <span class="balance-value">
+          <img class="coin-icon" src="${escapeHTML(iconUrl)}" alt="PsyCoin" />
+          ${escapeHTML(amount)}
+        </span>
+      `;
+    }
 
     async function load() {
-      if (!id()) {
-        balance.textContent = '...';
-        notice.textContent = 'Откройте магазин из Telegram или введите ID для локального теста.';
+      if (!telegramId) {
+        notice.textContent = 'Откройте магазин из Telegram или передайте telegram_id в ссылке.';
         return;
       }
+
       notice.textContent = '';
-      const res = await fetch(`/api/v1/marketplace/state?telegram_id=${encodeURIComponent(id())}`);
+      const res = await fetch(
+        `/api/v1/marketplace/state?telegram_id=${encodeURIComponent(telegramId)}`
+      );
       if (!res.ok) {
-        balance.textContent = '0';
         notice.textContent = 'Пользователь не найден. Сначала напишите боту /start.';
-        itemsBox.innerHTML = '';
-        purchasesBox.innerHTML = '';
         return;
       }
+
       const data = await res.json();
-      balance.textContent = `${data.token_balance} PC`;
-      profileId.textContent = data.telegram_id;
+      const collectibles = data.items.filter(item => item.item_type === 'collectible');
+      const wisdom = data.items.find(item => item.item_type === 'wisdom_sphere');
+      const premium = data.items.find(item => item.item_type.startsWith('privilege_'));
+
+      balance.innerHTML = renderBalance(data.currency_icon_url, data.token_balance);
       profileStatus.textContent = statusLabels[data.status] || data.status;
       profileScore.textContent = `${data.subjectivity_score}/100`;
-      profileBalance.textContent = `${data.token_balance} псикоинов`;
-      profileSummary.textContent = data.profile_summary || 'Портрет еще формируется.';
+      profileBalance.innerHTML = coinMarkup(
+        data.currency_icon_url,
+        data.token_balance,
+        'price'
+      );
+      profileSummary.textContent = data.profile_summary ||
+        'Психологический портрет еще формируется.';
 
-      itemsBox.innerHTML = data.items.map(item => {
+      itemsBox.innerHTML = collectibles.map(item => {
         const [kind, label] = typeLabel(item.item_type);
         const disabled = data.token_balance < item.price_tokens ? 'disabled' : '';
         return `
-          <article class="item">
+          <article class="card item">
             <div class="item-head">
               <img
-                class="item-media ${item.item_type === 'wisdom_sphere' ? 'sphere' : ''}"
+                class="item-media"
                 src="${escapeHTML(item.image_url)}"
                 alt="${escapeHTML(item.title)}"
               />
               <div class="item-copy">
                 <div class="item-top">
-                  <h2>${escapeHTML(item.index)}. ${escapeHTML(item.title)}</h2>
+                  <h2>${escapeHTML(item.title)}</h2>
                   <span class="badge ${kind}">${label}</span>
                 </div>
                 <p>${escapeHTML(item.description)}</p>
@@ -490,52 +657,64 @@ async def shop_app() -> str:
             </div>
             <div class="item-meta">
               ${coinMarkup(item.currency_icon_url, item.price_tokens)}
-              <button
-                class="buy"
-                ${disabled}
-                onclick="buy(${item.index})"
-              >${buyLabel(item.item_type)}</button>
+              <button class="buy" ${disabled} onclick="buyById('${item.id}')">Купить</button>
             </div>
           </article>
         `;
       }).join('');
 
-      purchasesBox.innerHTML = data.purchases.length ? data.purchases.map(p => {
-        const [kind, label] = typeLabel(p.item_type);
-        return `
-          <article class="item">
-            <div class="item-head">
-              <img
-                class="item-media ${p.item_type === 'wisdom_sphere' ? 'sphere' : ''}"
-                src="${escapeHTML(p.image_url)}"
-                alt="${escapeHTML(p.title)}"
-              />
-              <div class="item-copy">
-                <div class="item-top">
-                  <h2>${escapeHTML(p.title)}</h2>
-                  <span class="badge ${kind}">${label}</span>
-                </div>
-                <p>Куплено за ${coinMarkup(p.currency_icon_url, p.price_tokens)}</p>
+      if (wisdom) {
+        wisdomImage.src = wisdom.image_url;
+        wisdomTitle.textContent = wisdom.title;
+        wisdomDescription.textContent = wisdom.description;
+        wisdomPrice.innerHTML = coinMarkup(wisdom.currency_icon_url, wisdom.price_tokens);
+        wisdomBuyButton.disabled = data.token_balance < wisdom.price_tokens;
+        wisdomBuyButton.onclick = () => buyById(wisdom.id);
+      }
+
+      premiumBox.innerHTML = premium ? `
+        <article class="card premium-card">
+          <div class="premium-head">
+            <div class="item-copy">
+              <div class="item-top">
+                <h2>${escapeHTML(premium.title)}</h2>
+                <span class="badge privilege">Подписка</span>
               </div>
+              <p class="premium-copy">${escapeHTML(premium.description)}</p>
             </div>
-          </article>
-        `;
-      }).join('') : '<div class="empty">Инвентарь пуст.</div>';
+            <img
+              class="item-media"
+              src="${escapeHTML(premium.image_url)}"
+              alt="${escapeHTML(premium.title)}"
+            />
+          </div>
+          <div class="item-meta">
+            ${coinMarkup(premium.currency_icon_url, premium.price_tokens)}
+            <button
+              class="buy"
+              ${data.token_balance < premium.price_tokens ? 'disabled' : ''}
+              onclick="buyById('${premium.id}')"
+            >Купить</button>
+          </div>
+        </article>
+      ` : '<div class="empty">Премиум пока недоступен.</div>';
     }
 
-    async function buy(index) {
+    async function buyById(itemId) {
       notice.textContent = 'Оформляю покупку...';
       const res = await fetch('/api/v1/marketplace/buy', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({telegram_id: Number(id()), item_index: index})
+        body: JSON.stringify({
+          telegram_id: Number(telegramId),
+          item_id: itemId
+        })
       });
       const data = await res.json();
       notice.textContent = data.message || 'Готово.';
       await load();
     }
 
-    input.addEventListener('change', load);
     document.querySelectorAll('.tab').forEach(button => {
       button.addEventListener('click', () => {
         document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
@@ -544,6 +723,7 @@ async def shop_app() -> str:
         document.getElementById(button.dataset.tab + 'Panel').classList.add('active');
       });
     });
+
     load();
   </script>
 </body>
