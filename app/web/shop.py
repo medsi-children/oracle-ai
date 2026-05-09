@@ -171,6 +171,10 @@ async def shop_app() -> str:
       font-weight: 700;
       color: var(--coin);
     }
+    .balance-value .coin-amount {
+      display: inline-block;
+      line-height: 1;
+    }
     .balance-value .coin-icon {
       width: 40px;
       height: 40px;
@@ -507,10 +511,12 @@ async def shop_app() -> str:
       font-weight: 800;
       color: var(--coin);
     }
-    .profile-balance-value img + * {
+    .profile-balance-value .coin-amount {
+      display: inline-block;
       font-size: 42px;
       line-height: 1.05;
       font-weight: 800;
+      letter-spacing: 0;
     }
     .profile-balance-value .coin-icon {
       width: 24px;
@@ -739,7 +745,7 @@ async def shop_app() -> str:
       return `
         <span class="${className}">
           <img class="coin-icon loading-image" src="${escapeHTML(iconUrl)}" alt="PsyCoin" loading="eager" decoding="async" />
-          ${escapeHTML(amount)}
+          <span class="coin-amount">${escapeHTML(amount)}</span>
         </span>
       `;
     }
@@ -748,7 +754,7 @@ async def shop_app() -> str:
       return `
         <span class="balance-value">
           <img class="coin-icon loading-image" src="${escapeHTML(iconUrl)}" alt="PsyCoin" loading="eager" decoding="async" />
-          ${escapeHTML(amount)}
+          <span class="coin-amount">${escapeHTML(amount)}</span>
         </span>
       `;
     }
