@@ -11,6 +11,7 @@ from app.models.news import NewsItem
 from app.models.session import ConversationSession
 from app.models.user import User
 from app.schemas.message import ChatAnimationStep, InlineKeyboardButton, InlineKeyboardMarkup
+from app.services.admin_reset import find_user_for_reset, reset_user_profile
 from app.services.admins import is_admin
 from app.services.assessment import analyze_implicit_signals, create_assessment
 from app.services.battles import (
@@ -275,7 +276,31 @@ def format_help() -> str:
         "/shop — PsyCoin Shop\n"
         "/buy 1 — купить предмет, привилегию или Сферу Мудрости\n"
         "/profile — посмотреть профиль и баланс\n"
+        "/reset @username — админ: полностью обнулить профиль пользователя\n"
         "/help — показать это меню"
+    )
+
+
+async def handle_reset_command(db: AsyncSession, admin: User, clean: str) -> str:
+    if not is_admin(admin):
+        return "Эта команда доступна только администратору."
+
+    parts = clean.split(maxsplit=1)
+    if len(parts) < 2 or not parts[1].strip():
+        return "Формат: /reset @username или /reset telegram_id"
+
+    target = await find_user_for_reset(db, parts[1].strip())
+    if target is None:
+        return "Пользователь не найден. Проверь username или Telegram ID."
+    if target.id == admin.id:
+        return "Свой профиль через /reset лучше не стирать. Для этого используйте прямой SQL."
+
+    username = f"@{target.username}" if target.username else f"id {target.telegram_id}"
+    await reset_user_profile(db, target)
+    return (
+        f"Профиль {username} полностью обнулен.\n\n"
+        "Удалены история диалогов, сессии, оценки, summary, покупки и ledger псикоинов. "
+        "Статус: Объект. Баланс: 0."
     )
 
 
@@ -361,6 +386,8 @@ async def handle_user_text(
         return format_help(), "help", 0, None
     if command in {"/profile", "/status"}:
         return format_profile(user), "profile", 0, None
+    if command == "/reset":
+        return await handle_reset_command(db, user, clean), "admin_reset", 0, None
     if command in {"/summary", "/summaries"}:
         if not is_admin(user):
             return "Эта команда доступна только администратору.", "forbidden", 0, None

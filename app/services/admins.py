@@ -15,3 +15,7 @@ def is_admin(user: User) -> bool:
     if user.telegram_id in admin_ids():
         return True
     return (user.username or "").lower() == settings.admin_telegram_username.lower()
+
+
+def normalize_username(value: str) -> str:
+    return value.strip().lstrip("@").lower()
