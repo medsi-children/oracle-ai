@@ -11,6 +11,15 @@ class MessageCreate(BaseModel):
     source: str = "telegram"
 
 
+class InlineKeyboardButton(BaseModel):
+    text: str
+    callback_data: str
+
+
+class InlineKeyboardMarkup(BaseModel):
+    inline_keyboard: list[list[InlineKeyboardButton]]
+
+
 class MessageResponse(BaseModel):
     user_id: UUID
     session_id: UUID
@@ -18,3 +27,4 @@ class MessageResponse(BaseModel):
     mode: str = "support"
     token_delta: int = 0
     subjectivity_score: int | None = None
+    reply_markup: InlineKeyboardMarkup | None = None

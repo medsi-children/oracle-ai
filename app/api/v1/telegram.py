@@ -14,15 +14,19 @@ router = APIRouter()
 
 @router.post("/webhook", response_model=MessageResponse)
 async def telegram_webhook(update: dict[str, Any], db: AsyncSession = Depends(get_db)) -> MessageResponse:
-    message = update.get("message") or {}
+    callback_query = update.get("callback_query") or {}
+    message = update.get("message") or callback_query.get("message") or {}
     chat = message.get("chat") or {}
-    sender = message.get("from") or chat
-    text = message.get("text")
+    sender = callback_query.get("from") or message.get("from") or chat
+    text = callback_query.get("data") or message.get("text")
     telegram_id = sender.get("id")
     chat_id = chat.get("id")
 
     if telegram_id is None or not text:
-        raise HTTPException(status_code=400, detail="Only text Telegram messages are supported in MVP")
+        raise HTTPException(
+            status_code=400,
+            detail="Only text messages and callback buttons are supported in MVP",
+        )
 
     user = await get_or_create_user(
         db,
@@ -43,10 +47,12 @@ async def telegram_webhook(update: dict[str, Any], db: AsyncSession = Depends(ge
             "telegram_update_id": update.get("update_id"),
             "chat_id": chat_id,
             "chat_type": chat.get("type"),
+            "callback_query_id": callback_query.get("id"),
+            "callback_data": callback_query.get("data"),
         },
     )
 
-    reply, mode, token_delta = await handle_user_text(
+    reply, mode, token_delta, reply_markup = await handle_user_text(
         db,
         user=user,
         session=session,
@@ -64,4 +70,5 @@ async def telegram_webhook(update: dict[str, Any], db: AsyncSession = Depends(ge
         mode=mode,
         token_delta=token_delta,
         subjectivity_score=user.subjectivity_score,
+        reply_markup=reply_markup,
     )

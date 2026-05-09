@@ -10,6 +10,7 @@ from app.models.message import Message
 from app.models.news import NewsItem
 from app.models.session import ConversationSession
 from app.models.user import User
+from app.schemas.message import InlineKeyboardButton, InlineKeyboardMarkup
 from app.services.admins import is_admin
 from app.services.assessment import analyze_implicit_signals, create_assessment
 from app.services.battles import (
@@ -148,10 +149,18 @@ def format_first_contact() -> str:
         "Здесь действует Закон Эха: каждый ответ вернется к тебе в виде будущего рейтинга. "
         "Здесь нельзя быть “правильным”; можно быть только настоящим. "
         "Попытка солгать мне или самому себе будет зафиксирована как когнитивная слабость.\n\n"
-        "Ты готов начать переход из состояния Объекта в статус Субъекта?»\n\n"
-        "[ Я готов взглянуть в зеркало ]\n"
-        "[ Мне нужно время ]\n\n"
-        "Ответь: «готов» или «время»."
+        "Ты готов начать переход из состояния Объекта в статус Субъекта?»"
+    )
+
+
+def first_contact_reply_markup() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="Я готов", callback_data="onboarding:ready"),
+                InlineKeyboardButton(text="Мне нужно время", callback_data="onboarding:later"),
+            ]
+        ]
     )
 
 
@@ -281,31 +290,37 @@ async def handle_user_text(
     text: str,
     chat_id: int | None = None,
     chat_type: str | None = None,
-) -> tuple[str, str, int]:
+) -> tuple[str, str, int, InlineKeyboardMarkup | None]:
     clean = text.strip()
     command = clean.split(maxsplit=1)[0].lower()
 
     if command == "/start":
         session.state = "onboarding:consent"
         user.status = user.status or "object"
-        return format_first_contact(), "onboarding_start", 0
+        return format_first_contact(), "onboarding_start", 0, first_contact_reply_markup()
 
     if session.state == "onboarding:consent":
         lower = clean.lower()
-        if any(marker in lower for marker in ["готов", "зеркало", "начать", "да"]):
+        if clean == "onboarding:ready" or any(
+            marker in lower for marker in ["готов", "зеркало", "начать", "да"]
+        ):
             session.state = "onboarding:case0"
-            return format_case_zero(), "onboarding_case_prompt", 0
-        if any(marker in lower for marker in ["время", "позже", "выход", "нет"]):
+            return format_case_zero(), "onboarding_case_prompt", 0, None
+        if clean == "onboarding:later" or any(
+            marker in lower for marker in ["время", "позже", "выход", "нет"]
+        ):
             session.state = "paused"
             return (
                 "Пауза зафиксирована. Когда будешь готов продолжить, отправь /start.",
                 "onboarding_paused",
                 0,
+                None,
             )
         return (
-            "Сейчас нет меню и обходных дверей. Ответь одним словом: «готов» или «время».",
+            "Сейчас нет меню и обходных дверей. Выбери один из двух вариантов ниже.",
             "onboarding_waiting",
             0,
+            first_contact_reply_markup(),
         )
 
     if session.state == "onboarding:case0":
@@ -330,18 +345,18 @@ async def handle_user_text(
             + "\n\n"
             + format_group_invite()
         )
-        return reply, "onboarding_assessment", token_delta
+        return reply, "onboarding_assessment", token_delta, None
 
     if command == "/help":
-        return format_help(), "help", 0
+        return format_help(), "help", 0, None
     if command in {"/profile", "/status"}:
-        return format_profile(user), "profile", 0
+        return format_profile(user), "profile", 0, None
     if command in {"/summary", "/summaries"}:
         if not is_admin(user):
-            return "Эта команда доступна только администратору.", "forbidden", 0
+            return "Эта команда доступна только администратору.", "forbidden", 0, None
         summaries = await create_due_summaries(db, older_than_minutes=60)
         if not summaries:
-            return "Новых завершенных бесед для summary пока нет.", "admin_summary_empty", 0
+            return "Новых завершенных бесед для summary пока нет.", "admin_summary_empty", 0, None
         return (
             "Созданы новые summary:\n\n"
             + "\n\n".join(
@@ -349,11 +364,12 @@ async def handle_user_text(
             ),
             "admin_summary",
             0,
+            None,
         )
     if command == "/case":
         case = await get_random_case(db)
         session.state = f"case:{case.id}:1"
-        return format_case(case), "case_prompt", 0
+        return format_case(case), "case_prompt", 0, None
     if command == "/news":
         item = await get_or_create_news_case(db)
         session.state = f"news:{item.id}:1"
@@ -364,6 +380,7 @@ async def handle_user_text(
             "и какой выбор сохранит достоинство?",
             "news_prompt",
             0,
+            None,
         )
     if command == "/battle":
         parts = clean.split(maxsplit=1)
@@ -377,6 +394,7 @@ async def handle_user_text(
                     "тогда тему предложит Оракул.",
                     "battle_topic_locked",
                     0,
+                    None,
                 )
         battle = await create_battle(db, user=user, chat_id=chat_id, topic=topic)
         location = "группе" if chat_type in {"group", "supergroup"} else "личном чате"
@@ -389,13 +407,14 @@ async def handle_user_text(
             "завершите командой /finishbattle. Ставка: 1 псикоин.",
             "battle_waiting",
             0,
+            None,
         )
     if command == "/joinbattle":
         _, message = await join_waiting_battle(db, user=user, chat_id=chat_id)
-        return message, "battle_join", 0
+        return message, "battle_join", 0, None
     if command == "/finishbattle":
         _, message, token_delta = await finish_active_battle(db, chat_id=chat_id)
-        return message, "battle_finished", token_delta
+        return message, "battle_finished", token_delta, None
     if command == "/shop":
         return (
             await format_shop(db, user)
@@ -404,12 +423,13 @@ async def handle_user_text(
             + f"?telegram_id={user.telegram_id}",
             "shop",
             0,
+            None,
         )
     if command == "/buy":
         parts = clean.split(maxsplit=1)
         if len(parts) < 2 or not parts[1].strip().isdigit():
-            return "Напишите номер предмета, например: /buy 1", "buy_help", 0
-        return await buy_item(db, user, int(parts[1].strip())), "buy", 0
+            return "Напишите номер предмета, например: /buy 1", "buy_help", 0, None
+        return await buy_item(db, user, int(parts[1].strip())), "buy", 0, None
 
     if session.state.startswith("case:"):
         parts = session.state.split(":")
@@ -423,6 +443,7 @@ async def handle_user_text(
                 "Кейс не найден, поэтому я вернул вас в обычный режим. Можно начать новый: /case",
                 "case_missing",
                 0,
+                None,
             )
         latency = await get_last_assistant_latency_seconds(db, session)
         implicit = analyze_implicit_signals(clean, latency_seconds=latency)
@@ -433,6 +454,7 @@ async def handle_user_text(
                 + build_probe_question(clean, implicit),
                 "case_probe",
                 0,
+                None,
             )
         session.state = "active"
         answers = await get_recent_user_texts(db, session, limit=2)
@@ -453,7 +475,8 @@ async def handle_user_text(
             "\n\nЧтобы пройти еще один кейс, отправьте /case. "
             "Для разговора просто напишите сообщение."
         )
-        return reply, "case_assessment", token_delta
+        return reply, "case_assessment", token_delta, None
+
 
     if session.state.startswith("news:"):
         parts = session.state.split(":")
@@ -463,7 +486,7 @@ async def handle_user_text(
         item = result.scalar_one_or_none()
         if item is None:
             session.state = "active"
-            return "Новостной кейс не найден. Можно начать новый: /news", "news_missing", 0
+            return "Новостной кейс не найден. Можно начать новый: /news", "news_missing", 0, None
         latency = await get_last_assistant_latency_seconds(db, session)
         implicit = analyze_implicit_signals(clean, latency_seconds=latency)
         if step == "1":
@@ -473,6 +496,7 @@ async def handle_user_text(
                 + build_probe_question(clean, implicit),
                 "news_probe",
                 0,
+                None,
             )
         session.state = "active"
         answers = await get_recent_user_texts(db, session, limit=2)
@@ -488,16 +512,17 @@ async def handle_user_text(
             implicit_signals=combined_implicit,
         )
         reply = format_assessment_reply("Разбор Sentinel Mode", assessment, token_delta)
-        return reply, "news_assessment", token_delta
+        return reply, "news_assessment", token_delta, None
 
     if chat_type in {"group", "supergroup"}:
         active_battle = await get_latest_battle(db, chat_id=chat_id, statuses={"active"})
         if active_battle is not None:
-            return "Аргумент зафиксирован для текущего баттла.", "battle_argument", 0
+            return "Аргумент зафиксирован для текущего баттла.", "battle_argument", 0, None
         return (
             "В группе я реагирую на команды: /battle, /joinbattle, /finishbattle, /news, /case.",
             "group_idle",
             0,
+            None,
         )
 
     reply = await build_supportive_reply_with_context(db, session=session, text=clean)
@@ -511,4 +536,4 @@ async def handle_user_text(
         use_llm=False,
         award_tokens=False,
     )
-    return reply, "support", 0
+    return reply, "support", 0, None

@@ -23,7 +23,7 @@ async def create_message(payload: MessageCreate, db: AsyncSession = Depends(get_
     session = await get_active_session(db, user, source=payload.source)
     await add_message(db, user=user, session=session, role="user", content=payload.text)
 
-    reply, mode, token_delta = await handle_user_text(
+    reply, mode, token_delta, reply_markup = await handle_user_text(
         db,
         user=user,
         session=session,
@@ -39,4 +39,5 @@ async def create_message(payload: MessageCreate, db: AsyncSession = Depends(get_
         mode=mode,
         token_delta=token_delta,
         subjectivity_score=user.subjectivity_score,
+        reply_markup=reply_markup,
     )
