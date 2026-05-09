@@ -83,7 +83,7 @@ async def shop_app() -> str:
     }
     header {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-columns: minmax(0, 1fr) auto auto;
       gap: 16px;
       align-items: end;
       margin-bottom: 20px;
@@ -117,6 +117,51 @@ async def shop_app() -> str:
       box-shadow: var(--shadow);
       backdrop-filter: blur(18px);
     }
+    .profile-button {
+      width: 54px;
+      height: 54px;
+      display: grid;
+      place-items: center;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(44, 28, 38, .9), rgba(21, 15, 20, .96));
+      box-shadow: var(--shadow);
+      color: #ffe7ef;
+      cursor: pointer;
+      transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+    }
+    .profile-button:hover {
+      transform: translateY(-1px);
+      border-color: rgba(255, 184, 202, .34);
+    }
+    .profile-glyph {
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      border: 2px solid currentColor;
+      position: relative;
+    }
+    .profile-glyph::before,
+    .profile-glyph::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      border-radius: 999px;
+      border: 2px solid currentColor;
+    }
+    .profile-glyph::before {
+      top: -12px;
+      width: 10px;
+      height: 10px;
+      background: transparent;
+    }
+    .profile-glyph::after {
+      bottom: -10px;
+      width: 18px;
+      height: 10px;
+      border-top: 0;
+    }
     .balance-label {
       color: var(--text-soft);
       font-size: 12px;
@@ -140,7 +185,7 @@ async def shop_app() -> str:
     }
     .tabs {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 10px;
       margin-bottom: 16px;
     }
@@ -233,6 +278,19 @@ async def shop_app() -> str:
         radial-gradient(circle at 30% 30%, rgba(255,255,255,.16), transparent 52%),
         linear-gradient(180deg, #2d1b25, #151017);
       box-shadow: 0 18px 30px rgba(0, 0, 0, .28);
+      animation: itemPulse 3.8s ease-in-out infinite;
+    }
+    @keyframes itemPulse {
+      0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 18px 30px rgba(0, 0, 0, .28);
+      }
+      50% {
+        transform: scale(1.025);
+        box-shadow:
+          0 0 0 10px rgba(255, 184, 202, 0),
+          0 20px 34px rgba(0, 0, 0, .3);
+      }
     }
     .item-copy {
       display: grid;
@@ -380,8 +438,12 @@ async def shop_app() -> str:
     .premium-head {
       display: flex;
       justify-content: space-between;
-      gap: 12px;
+      gap: 18px;
       align-items: flex-start;
+    }
+    .premium-media {
+      width: 88px;
+      flex: 0 0 88px;
     }
     .profile-card {
       display: grid;
@@ -436,9 +498,6 @@ async def shop_app() -> str:
       header { grid-template-columns: 1fr; }
       .balance { width: 100%; }
       .grid { grid-template-columns: 1fr; }
-      .tabs {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
     }
     @media (max-width: 560px) {
       main {
@@ -461,6 +520,14 @@ async def shop_app() -> str:
       .buy {
         width: 100%;
       }
+      .tabs {
+        gap: 8px;
+      }
+      .tab {
+        min-height: 44px;
+        font-size: 13px;
+        padding-inline: 6px;
+      }
       .profile-grid {
         grid-template-columns: 1fr;
       }
@@ -481,22 +548,24 @@ async def shop_app() -> str:
         <span class="balance-label">Баланс</span>
         <strong class="balance-value" id="balance">...</strong>
       </div>
+      <button class="profile-button" id="profileButton" aria-label="Профиль">
+        <span class="profile-glyph" aria-hidden="true"></span>
+      </button>
     </header>
 
     <nav class="tabs" aria-label="Разделы магазина">
-      <button class="tab active" data-tab="shop">Магазин</button>
-      <button class="tab" data-tab="wisdom">Мудрость</button>
-      <button class="tab" data-tab="premium">👑 Премиум</button>
-      <button class="tab" data-tab="profile">Профиль</button>
+      <button class="tab" data-tab="shop">Магазин</button>
+      <button class="tab active" data-tab="wisdom">Мудрость</button>
+      <button class="tab" data-tab="premium">Подписки</button>
     </nav>
 
     <div class="notice" id="notice"></div>
 
-    <section class="panel active" id="shopPanel">
+    <section class="panel" id="shopPanel">
       <div class="grid" id="items"></div>
     </section>
 
-    <section class="panel" id="wisdomPanel">
+    <section class="panel active" id="wisdomPanel">
       <div class="wisdom-stage">
         <div class="card wisdom-shell">
           <div class="sphere-wrap">
@@ -553,6 +622,7 @@ async def shop_app() -> str:
     const profileScore = document.getElementById('profileScore');
     const profileBalance = document.getElementById('profileBalance');
     const profileSummary = document.getElementById('profileSummary');
+    const profileButton = document.getElementById('profileButton');
     const itemsBox = document.getElementById('items');
     const premiumBox = document.getElementById('premiumBox');
     const notice = document.getElementById('notice');
@@ -683,7 +753,7 @@ async def shop_app() -> str:
               <p class="premium-copy">${escapeHTML(premium.description)}</p>
             </div>
             <img
-              class="item-media"
+              class="item-media premium-media"
               src="${escapeHTML(premium.image_url)}"
               alt="${escapeHTML(premium.title)}"
             />
@@ -722,6 +792,12 @@ async def shop_app() -> str:
         button.classList.add('active');
         document.getElementById(button.dataset.tab + 'Panel').classList.add('active');
       });
+    });
+
+    profileButton.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
+      document.getElementById('profilePanel').classList.add('active');
     });
 
     load();

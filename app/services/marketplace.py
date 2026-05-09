@@ -117,6 +117,14 @@ async def ensure_marketplace_items(db: AsyncSession) -> None:
     result = await db.execute(select(MarketplaceItem))
     existing = list(result.scalars().all())
     by_title = {item.title: item for item in existing}
+    known_titles = {seed_item["title"] for seed_item in SEED_ITEMS} | {
+        seed_item["legacy_title"] for seed_item in SEED_ITEMS if seed_item.get("legacy_title")
+    }
+
+    for existing_item in existing:
+        if existing_item.title not in known_titles:
+            existing_item.is_active = False
+
     for seed_item in SEED_ITEMS:
         data = {
             key: value
@@ -179,10 +187,9 @@ async def get_wisdom_sphere_unlock_count(db: AsyncSession, user: User) -> int:
 
 def build_wisdom_sphere_description(level: int) -> str:
     tier = level + 1
-    price = WISDOM_SPHERE_PRICES[level]
     return (
         f"Ступень {tier} из {len(WISDOM_SPHERE_PRICES)}.\n"
-        f"Кнопка «Узнать о себе» открывает личное послание Оракула за {price} PsyCoin.\n"
+        "Кнопка «Узнать о себе» открывает личное послание Оракула.\n"
         "Чем выше ступень, тем глубже, длиннее и ценнее рекомендация."
     )
 
