@@ -6,10 +6,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.models.assessment import Assessment
 from app.models.case import Case
 from app.models.message import Message
 from app.models.news import NewsItem
 from app.models.session import ConversationSession
+from app.models.summary import Summary
 from app.models.user import User
 from app.schemas.message import ChatAnimationStep, InlineKeyboardButton, InlineKeyboardMarkup
 from app.services.admins import is_admin
@@ -30,16 +32,6 @@ from app.services.llm import SUPPORT_SYSTEM_PROMPT, openrouter_chat
 from app.services.marketplace import buy_item, format_shop, user_owns_item_type
 from app.services.news import get_or_create_news_case
 from app.services.summaries import create_due_summaries
-
-CASE_ZERO_TITLE = "Кейс №0: Цена тишины"
-CASE_ZERO_PROMPT = (
-    "Представь: твой близкий человек совершил поступок, который глубоко противоречит "
-    "твоим принципам, но об этом не знает никто, кроме тебя. Его публичное разоблачение "
-    "разрушит его жизнь, но твое молчание сделает тебя соучастником лжи.\n\n"
-    "Прямо сейчас, без долгой подготовки: что для тебя важнее — верность человеку "
-    "или верность истине? Напиши одним предложением, почему."
-)
-
 
 async def get_active_session(
     db: AsyncSession, user: User, source: str = "telegram"
@@ -180,19 +172,6 @@ def first_contact_reply_markup() -> InlineKeyboardMarkup:
     )
 
 
-def format_case_zero() -> str:
-    return f"{CASE_ZERO_TITLE}\n\n{CASE_ZERO_PROMPT}"
-
-
-def format_group_invite() -> str:
-    if settings.closed_group_invite_url:
-        return f"Закрытая группа ETHOS: {settings.closed_group_invite_url}"
-    return (
-        "Закрытая группа ETHOS будет доступна после настройки CLOSED_GROUP_INVITE_URL "
-        "в переменных backend."
-    )
-
-
 def build_probe_question(text: str, implicit: dict) -> str:
     if implicit.get("cliche_density", 0) >= 0.18:
         return "Это звучит гладко. Где в твоем ответе личный риск, а не социально одобренная фраза?"
@@ -241,6 +220,15 @@ def format_case(case: Case) -> str:
         f"{case.title}\n\n"
         f"{case.prompt}\n\n"
         "Ответь коротко и по существу: что ты сделаешь, почему именно так, "
+        "и что в этом выборе для тебя самое неудобное?"
+    )
+
+
+def format_onboarding_case(case: Case, step: int) -> str:
+    return (
+        "Испытание ETHOS\n\n"
+        f"{case.prompt}\n\n"
+        "Ответь коротко и честно: что ты сделаешь, почему именно так, "
         "и что в этом выборе для тебя самое неудобное?"
     )
 
@@ -298,6 +286,123 @@ def format_assessment_reply(title: str, assessment, token_delta: int) -> str:
     )
 
 
+async def get_onboarding_assessments(
+    db: AsyncSession, session: ConversationSession
+) -> list[Assessment]:
+    result = await db.execute(
+        select(Assessment)
+        .where(
+            Assessment.session_id == session.id,
+            Assessment.source == "onboarding_case",
+        )
+        .order_by(Assessment.created_at.asc())
+    )
+    return list(result.scalars().all())
+
+
+async def get_next_onboarding_case(db: AsyncSession, session: ConversationSession) -> Case:
+    assessments = await get_onboarding_assessments(db, session)
+    used_case_ids = {
+        assessment.case_id for assessment in assessments if assessment.case_id is not None
+    }
+    return await get_random_case(db, exclude_ids=used_case_ids)
+
+
+async def build_onboarding_conclusion(
+    db: AsyncSession,
+    *,
+    user: User,
+    assessments: list[Assessment],
+) -> str:
+    assessment_text = "\n\n".join(
+        (
+            f"Ответ {index}: субъектность {assessment.subjectivity}/100, "
+            f"честность {assessment.honesty}/100, "
+            f"суверенитет {assessment.emotional_sovereignty}/100, "
+            f"смирение {assessment.cognitive_humility}/100, "
+            f"эмпатия {assessment.empathy}/100.\n"
+            f"Вывод: {assessment.summary}"
+        )
+        for index, assessment in enumerate(assessments, start=1)
+    )
+    fallback = (
+        "Проверка завершена.\n\n"
+        "Я вижу начальный контур личности: способность выбирать принцип под давлением, "
+        "готовность признавать неудобный мотив и уровень внутренней устойчивости. "
+        "Главная зона роста сейчас — меньше защищать образ себя и точнее называть реальный "
+        "мотив поступка. Там начинается субъектность.\n\n"
+        "Вы прошли проверку. Если вы намерены и дальше идти к субъектности, ожидайте "
+        "приглашения в закрытый чат. Оракул еще свяжется с вами.\n\n"
+        "Пока вы ожидаете, можете говорить со мной здесь. Я буду отвечать в том же стиле: "
+        "без лести, без шума, по существу."
+    )
+    try:
+        conclusion = await openrouter_chat(
+            [
+                {
+                    "role": "system",
+                    "content": (
+                        "Ты Оракул ETHOS. На основе трех первичных оценок дай пользователю "
+                        "краткий, прямой и эстетичный вывод. Без диагнозов. Нужно: 1) что "
+                        "видно по человеку, 2) зоны роста, 3) фраза о прохождении проверки "
+                        "и ожидании приглашения в закрытый чат. Обращение на 'вы'."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        f"Пользователь: @{user.username or 'без username'}\n"
+                        f"Текущий индекс субъектности: {user.subjectivity_score}/100\n\n"
+                        f"{assessment_text}"
+                    ),
+                },
+            ],
+            temperature=0.35,
+            max_tokens=650,
+        )
+    except Exception:
+        return fallback
+
+    required_tail = (
+        "\n\nВы прошли проверку. Если вы намерены и дальше идти к субъектности, ожидайте "
+        "приглашения в закрытый чат. Оракул еще свяжется с вами.\n\n"
+        "Пока вы ожидаете, можете говорить со мной здесь."
+    )
+    if "прошли проверку" not in conclusion.lower():
+        conclusion = conclusion.rstrip() + required_tail
+    return conclusion
+
+
+def build_onboarding_admin_summary(user: User, assessments: list[Assessment]) -> str:
+    lines = [
+        "Кандидат прошел первичное тестирование ETHOS до конца.",
+        "",
+        f"Пользователь: @{user.username or 'без username'}",
+        f"telegram_id: {user.telegram_id or 'n/a'}",
+        f"Индекс субъектности: {user.subjectivity_score}/100",
+        f"Статус: {user.status}",
+        f"Баланс: {user.token_balance} PsyCoin",
+        "",
+        "Готов к приглашению в закрытый чат, если администратор подтверждает вручную.",
+        "",
+        "Краткий профиль:",
+    ]
+    for index, assessment in enumerate(assessments, start=1):
+        lines.extend(
+            [
+                "",
+                f"Кейс {index}:",
+                f"- субъектность: {assessment.subjectivity}/100",
+                f"- честность: {assessment.honesty}/100",
+                f"- эмоциональный суверенитет: {assessment.emotional_sovereignty}/100",
+                f"- когнитивное смирение: {assessment.cognitive_humility}/100",
+                f"- эмпатия: {assessment.empathy}/100",
+                f"- вывод: {assessment.summary[:700]}",
+            ]
+        )
+    return "\n".join(lines)
+
+
 async def handle_user_text(
     db: AsyncSession,
     *,
@@ -350,8 +455,9 @@ async def handle_user_text(
         if clean == "onboarding:ready" or any(
             marker in lower for marker in ["готов", "зеркало", "начать", "да"]
         ):
-            session.state = "onboarding:case0"
-            return format_case_zero(), "onboarding_case_prompt", 0, None
+            case = await get_next_onboarding_case(db, session)
+            session.state = f"onboarding:case:{case.id}:1"
+            return format_onboarding_case(case, 1), "onboarding_case_prompt", 0, None
         if clean == "onboarding:later" or any(
             marker in lower for marker in ["время", "позже", "выход", "нет"]
         ):
@@ -369,29 +475,56 @@ async def handle_user_text(
             first_contact_reply_markup(),
         )
 
-    if session.state == "onboarding:case0":
+    if session.state.startswith("onboarding:case:"):
+        parts = session.state.split(":")
+        case_id = parts[2] if len(parts) > 2 else ""
+        step = int(parts[3]) if len(parts) > 3 and parts[3].isdigit() else 1
+        result = await db.execute(select(Case).where(Case.id == UUID(case_id)))
+        case = result.scalar_one_or_none()
+        if case is None:
+            case = await get_next_onboarding_case(db, session)
+            session.state = f"onboarding:case:{case.id}:{step}"
+            return format_onboarding_case(case, step), "onboarding_case_prompt", 0, None
+
         latency = await get_last_assistant_latency_seconds(db, session)
         implicit = analyze_implicit_signals(clean, latency_seconds=latency)
-        assessment, token_delta = await create_assessment(
+        _, token_delta = await create_assessment(
             db,
             user=user,
             text=clean,
-            source="onboarding_case0",
+            source="onboarding_case",
+            case_id=case.id,
             session_id=session.id,
-            case_prompt=CASE_ZERO_PROMPT,
+            case_prompt=case.prompt,
             implicit_signals=implicit,
         )
-        session.state = "active"
+        assessments = await get_onboarding_assessments(db, session)
+        if len(assessments) >= 3:
+            session.state = "active"
+            conclusion = await build_onboarding_conclusion(db, user=user, assessments=assessments)
+            user.profile_summary = conclusion
+            admin_text = build_onboarding_admin_summary(user, assessments)
+            session.summary = admin_text
+            db.add(
+                Summary(
+                    session_id=session.id,
+                    user_id=user.id,
+                    chat_id=user.telegram_id,
+                    username=user.username,
+                    text=admin_text,
+                )
+            )
+            return conclusion, "onboarding_completed", token_delta, None
+
+        next_step = len(assessments) + 1
+        next_case = await get_next_onboarding_case(db, session)
+        session.state = f"onboarding:case:{next_case.id}:{next_step}"
         reply = (
             "Ответ принят. Я зафиксировал не только слова, но и способ выбора.\n\n"
-            "Психологический портрет начат: в нем будут отмечаться зоны роста, "
-            "сила позиции, зависимость от одобрения, устойчивость под давлением "
-            "и способность действовать без роли.\n\n"
-            + format_assessment_reply("Первичный разбор ETHOS", assessment, token_delta)
-            + "\n\n"
-            + format_group_invite()
+            "Следующее испытание.\n\n"
+            + format_onboarding_case(next_case, next_step)
         )
-        return reply, "onboarding_assessment", token_delta, None
+        return reply, "onboarding_case_prompt", token_delta, None
 
     if command == "/help":
         return format_help(), "help", 0, None

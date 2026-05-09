@@ -32,6 +32,7 @@ def format_admin_help() -> str:
         "/user @username — карточка пользователя\n"
         "/reset @username — полностью обнулить профиль\n"
         "/grant @username 10 причина — изменить баланс PsyCoin\n"
+        "/addcoins @username 10 причина — начислить PsyCoin\n"
         "/setscore @username 50 — задать индекс субъектности\n"
         "/setstatus @username object — задать статус вручную\n"
         "/close @username — закрыть активные сессии пользователя\n"
@@ -230,7 +231,7 @@ async def handle_admin_tool_command(db: AsyncSession, admin: User, clean: str) -
         return await format_user_card(db, clean)
     if command == "/reset":
         return await reset_command(db, clean, admin=admin)
-    if command == "/grant":
+    if command in {"/grant", "/addcoins"}:
         return await grant_command(db, clean)
     if command == "/setscore":
         return await setscore_command(db, clean)

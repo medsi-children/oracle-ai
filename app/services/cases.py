@@ -377,10 +377,19 @@ async def ensure_seed_cases(db: AsyncSession) -> None:
     await db.flush()
 
 
-async def get_random_case(db: AsyncSession) -> Case:
+async def get_random_case(db: AsyncSession, *, exclude_ids: set | None = None) -> Case:
     await ensure_seed_cases(db)
-    result = await db.execute(
-        select(Case).where(Case.is_active.is_(True)).order_by(func.random()).limit(1)
-    )
-    case = result.scalar_one()
+    query = select(Case).where(Case.is_active.is_(True))
+    if exclude_ids:
+        query = query.where(Case.id.not_in(exclude_ids))
+    result = await db.execute(query.order_by(func.random()).limit(1))
+    case = result.scalar_one_or_none()
+    if case is None and exclude_ids:
+        result = await db.execute(
+            select(Case).where(Case.is_active.is_(True)).order_by(func.random()).limit(1)
+        )
+        case = result.scalar_one()
+        return case
+    if case is None:
+        raise RuntimeError("No active ETHOS cases found")
     return case
