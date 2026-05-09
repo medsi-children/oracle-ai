@@ -12,6 +12,16 @@ from app.services.admin_reset import find_user_for_reset, reset_user_profile
 
 
 VALID_STATUSES = {"object", "seeker", "faithful", "keeper", "sighted", "subject"}
+ADMIN_SUCCESS = "Команда успешно выполнена!"
+ADMIN_ERROR = "Команда не выполнена."
+
+
+def format_admin_success(text: str) -> str:
+    return f"{ADMIN_SUCCESS}\n\n{text}"
+
+
+def format_admin_error(text: str) -> str:
+    return f"{ADMIN_ERROR}\n\n{text}"
 
 
 def format_admin_help() -> str:
@@ -49,7 +59,7 @@ async def format_users_list(db: AsyncSession, clean: str) -> str:
     result = await db.execute(select(User).order_by(User.created_at.desc()).limit(limit))
     users = list(result.scalars().all())
     if not users:
-        return "Пользователей пока нет."
+        return format_admin_success("Пользователей пока нет.")
 
     lines = ["Пользователи:"]
     for user in users:
@@ -57,13 +67,13 @@ async def format_users_list(db: AsyncSession, clean: str) -> str:
             f"{user_label(user)} | {user.status} | {user.subjectivity_score}/100 | "
             f"{user.token_balance} PsyCoin"
         )
-    return "\n".join(lines)
+    return format_admin_success("\n".join(lines))
 
 
 async def format_user_card(db: AsyncSession, clean: str) -> str:
     target = await user_from_command(db, clean)
     if target is None:
-        return "Пользователь не найден. Формат: /user @username или /user telegram_id"
+        return format_admin_error("Пользователь не найден. Формат: /user @username или /user telegram_id")
 
     sessions_count = await scalar_count(
         db, select(func.count()).select_from(ConversationSession).where(ConversationSession.user_id == target.id)
@@ -88,7 +98,7 @@ async def format_user_card(db: AsyncSession, clean: str) -> str:
     )
 
     summary = target.profile_summary or "Профиль пока пустой."
-    return (
+    return format_admin_success(
         f"{user_label(target)}\n\n"
         f"Telegram ID: {target.telegram_id}\n"
         f"Статус: {target.status}\n"
@@ -117,13 +127,13 @@ async def user_from_command(db: AsyncSession, clean: str) -> User | None:
 async def reset_command(db: AsyncSession, clean: str, *, admin: User) -> str:
     target = await user_from_command(db, clean)
     if target is None:
-        return "Пользователь не найден. Формат: /reset @username или /reset telegram_id"
+        return format_admin_error("Пользователь не найден. Формат: /reset @username или /reset telegram_id")
     if target.id == admin.id:
-        return "Свой профиль через /reset не стираю, чтобы не оставить проект без админа."
+        return format_admin_error("Свой профиль через /reset не стираю, чтобы не оставить проект без админа.")
 
     label = user_label(target)
     await reset_user_profile(db, target)
-    return (
+    return format_admin_success(
         f"Профиль {label} полностью обнулен.\n\n"
         "Удалены история, сессии, оценки, summary, покупки и ledger псикоинов. "
         "Статус: Объект. Баланс: 0."
@@ -133,15 +143,15 @@ async def reset_command(db: AsyncSession, clean: str, *, admin: User) -> str:
 async def grant_command(db: AsyncSession, clean: str) -> str:
     parts = clean.split(maxsplit=3)
     if len(parts) < 3:
-        return "Формат: /grant @username 10 причина"
+        return format_admin_error("Формат: /grant @username 10 причина")
 
     target = await find_user_for_reset(db, parts[1])
     if target is None:
-        return "Пользователь не найден."
+        return format_admin_error("Пользователь не найден.")
     try:
         amount = int(parts[2])
     except ValueError:
-        return "Сумма должна быть целым числом, например: /grant @user 10 тест"
+        return format_admin_error("Сумма должна быть целым числом, например: /grant @user 10 тест")
 
     reason = parts[3].strip() if len(parts) > 3 else "Admin balance adjustment"
     target.token_balance = max(0, target.token_balance + amount)
@@ -152,42 +162,44 @@ async def grant_command(db: AsyncSession, clean: str) -> str:
             reason=f"Admin: {reason}",
         )
     )
-    return f"Баланс {user_label(target)} изменен на {amount}. Сейчас: {target.token_balance} PsyCoin."
+    return format_admin_success(
+        f"Баланс {user_label(target)} изменен на {amount}. Сейчас: {target.token_balance} PsyCoin."
+    )
 
 
 async def setscore_command(db: AsyncSession, clean: str) -> str:
     parts = clean.split(maxsplit=2)
     if len(parts) < 3:
-        return "Формат: /setscore @username 50"
+        return format_admin_error("Формат: /setscore @username 50")
     target = await find_user_for_reset(db, parts[1])
     if target is None:
-        return "Пользователь не найден."
+        return format_admin_error("Пользователь не найден.")
     try:
         score = max(0, min(100, int(parts[2])))
     except ValueError:
-        return "Индекс должен быть числом от 0 до 100."
+        return format_admin_error("Индекс должен быть числом от 0 до 100.")
     target.subjectivity_score = score
-    return f"Индекс субъектности {user_label(target)} установлен: {score}/100."
+    return format_admin_success(f"Индекс субъектности {user_label(target)} установлен: {score}/100.")
 
 
 async def setstatus_command(db: AsyncSession, clean: str) -> str:
     parts = clean.split(maxsplit=2)
     if len(parts) < 3:
-        return "Формат: /setstatus @username object"
+        return format_admin_error("Формат: /setstatus @username object")
     target = await find_user_for_reset(db, parts[1])
     if target is None:
-        return "Пользователь не найден."
+        return format_admin_error("Пользователь не найден.")
     status = parts[2].strip().lower()
     if status not in VALID_STATUSES:
-        return "Статус должен быть одним из: " + ", ".join(sorted(VALID_STATUSES))
+        return format_admin_error("Статус должен быть одним из: " + ", ".join(sorted(VALID_STATUSES)))
     target.status = status
-    return f"Статус {user_label(target)} установлен: {status}."
+    return format_admin_success(f"Статус {user_label(target)} установлен: {status}.")
 
 
 async def close_sessions_command(db: AsyncSession, clean: str) -> str:
     target = await user_from_command(db, clean)
     if target is None:
-        return "Пользователь не найден. Формат: /close @username"
+        return format_admin_error("Пользователь не найден. Формат: /close @username")
 
     result = await db.execute(
         select(ConversationSession).where(
@@ -198,14 +210,14 @@ async def close_sessions_command(db: AsyncSession, clean: str) -> str:
     sessions = list(result.scalars().all())
     for session in sessions:
         session.state = "closed"
-    return f"Закрыто активных сессий для {user_label(target)}: {len(sessions)}."
+    return format_admin_success(f"Закрыто активных сессий для {user_label(target)}: {len(sessions)}.")
 
 
 async def shoplink_command(db: AsyncSession, clean: str) -> str:
     target = await user_from_command(db, clean)
     if target is None or target.telegram_id is None:
-        return "Пользователь не найден. Формат: /shoplink @username"
-    return settings.public_webapp_url + f"?telegram_id={target.telegram_id}"
+        return format_admin_error("Пользователь не найден. Формат: /shoplink @username")
+    return format_admin_success(settings.public_webapp_url + f"?telegram_id={target.telegram_id}")
 
 
 async def handle_admin_tool_command(db: AsyncSession, admin: User, clean: str) -> str | None:

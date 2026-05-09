@@ -13,7 +13,11 @@ from app.models.session import ConversationSession
 from app.models.user import User
 from app.schemas.message import ChatAnimationStep, InlineKeyboardButton, InlineKeyboardMarkup
 from app.services.admins import is_admin
-from app.services.admin_tools import format_admin_help, handle_admin_tool_command
+from app.services.admin_tools import (
+    format_admin_help,
+    format_admin_success,
+    handle_admin_tool_command,
+)
 from app.services.assessment import analyze_implicit_signals, create_assessment
 from app.services.battles import (
     create_battle,
@@ -153,7 +157,7 @@ def format_first_contact() -> str:
 
 def first_contact_intro_animation() -> list[ChatAnimationStep]:
     def terminal_line(text: str, duration_ms: int = 2200) -> ChatAnimationStep:
-        return ChatAnimationStep(text=f"<pre>{escape(text)}</pre>", duration_ms=duration_ms)
+        return ChatAnimationStep(text=f"<code>{escape(text)}</code>", duration_ms=duration_ms)
 
     return [
         terminal_line("СИСТЕМА ETHOS: Соединение..."),
@@ -317,13 +321,20 @@ async def handle_user_text(
             return admin_reply, "admin_command", 0, None
         if command == "/case":
             case = await get_random_case(db)
-            return "Админ-превью кейса\n\n" + format_case(case), "admin_case_preview", 0, None
+            return (
+                format_admin_success("Админ-превью кейса\n\n" + format_case(case)),
+                "admin_case_preview",
+                0,
+                None,
+            )
         if command == "/news":
             item = await get_or_create_news_case(db)
             return (
-                "Админ-превью Sentinel Mode\n\n"
-                f"{item.ethical_case}\n\n"
-                f"Источник: {item.source_url}",
+                format_admin_success(
+                    "Админ-превью Sentinel Mode\n\n"
+                    f"{item.ethical_case}\n\n"
+                    f"Источник: {item.source_url}"
+                ),
                 "admin_news_preview",
                 0,
                 None,
@@ -393,11 +404,18 @@ async def handle_user_text(
             return "Эта команда доступна только администратору.", "forbidden", 0, None
         summaries = await create_due_summaries(db, older_than_minutes=60)
         if not summaries:
-            return "Новых завершенных бесед для summary пока нет.", "admin_summary_empty", 0, None
+            return (
+                format_admin_success("Новых завершенных бесед для summary пока нет."),
+                "admin_summary_empty",
+                0,
+                None,
+            )
         return (
-            "Созданы новые summary:\n\n"
-            + "\n\n".join(
-                f"@{s.username or 'без username'}\n{s.text[:1200]}" for s in summaries[:5]
+            format_admin_success(
+                "Созданы новые summary:\n\n"
+                + "\n\n".join(
+                    f"@{s.username or 'без username'}\n{s.text[:1200]}" for s in summaries[:5]
+                )
             ),
             "admin_summary",
             0,
