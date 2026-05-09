@@ -167,6 +167,7 @@ async def shop_app() -> str:
       align-items: center;
       justify-content: flex-start;
       gap: 12px;
+      width: 100%;
       font-size: 34px;
       line-height: 1.05;
       font-weight: 800;
@@ -180,6 +181,28 @@ async def shop_app() -> str:
       width: 40px;
       height: 40px;
       flex-basis: 40px;
+    }
+    .vip-badge {
+      margin-left: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #ffd76a;
+      font-size: 34px;
+      line-height: 1.05;
+      font-weight: 800;
+      letter-spacing: 0;
+      text-shadow:
+        0 0 18px rgba(255, 215, 106, .24),
+        0 1px 0 rgba(255, 255, 255, .16);
+    }
+    .vip-icon {
+      width: 40px;
+      height: 40px;
+      object-fit: contain;
+      flex: 0 0 40px;
+      opacity: 0;
+      transition: opacity .28s ease, transform .28s ease;
     }
     .coin-icon {
       width: 20px;
@@ -527,6 +550,39 @@ async def shop_app() -> str:
       height: 24px;
       flex-basis: 24px;
     }
+    .profile-collectibles {
+      display: none;
+      gap: 12px;
+      padding-top: 4px;
+    }
+    .profile-collectibles.visible {
+      display: grid;
+    }
+    .profile-collectibles-title {
+      color: var(--text-soft);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+    .profile-collectibles-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .profile-collectible {
+      width: 54px;
+      height: 54px;
+      object-fit: cover;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 214, 228, .16);
+      background:
+        radial-gradient(circle at 30% 30%, rgba(255,255,255,.12), transparent 52%),
+        linear-gradient(180deg, #2d1b25, #151017);
+      box-shadow: 0 10px 24px rgba(0, 0, 0, .28);
+      opacity: 0;
+      transition: opacity .28s ease, transform .28s ease;
+      animation: itemPulse 4.6s ease-in-out infinite;
+    }
     .loading-image {
       position: relative;
       overflow: hidden;
@@ -690,6 +746,10 @@ async def shop_app() -> str:
             </div>
           </div>
           <p class="profile-copy" id="profileSummary"></p>
+          <div class="profile-collectibles" id="profileCollectibles">
+            <div class="profile-collectibles-title">Коллекция</div>
+            <div class="profile-collectibles-list" id="profileCollectiblesList"></div>
+          </div>
         </div>
       </div>
     </section>
@@ -710,6 +770,8 @@ async def shop_app() -> str:
     const profileScore = document.getElementById('profileScore');
     const profileBalance = document.getElementById('profileBalance');
     const profileSummary = document.getElementById('profileSummary');
+    const profileCollectibles = document.getElementById('profileCollectibles');
+    const profileCollectiblesList = document.getElementById('profileCollectiblesList');
     const profileButton = document.getElementById('profileButton');
     const itemsBox = document.getElementById('items');
     const premiumBox = document.getElementById('premiumBox');
@@ -754,11 +816,18 @@ async def shop_app() -> str:
       `;
     }
 
-    function renderBalance(iconUrl, amount) {
+    function renderBalance(iconUrl, amount, vip = null) {
+      const vipMarkup = vip ? `
+        <span class="vip-badge" aria-label="VIP">
+          <img class="vip-icon loading-image" src="${escapeHTML(vip.image_url)}" alt="VIP" loading="eager" decoding="async" />
+          <span>VIP</span>
+        </span>
+      ` : '';
       return `
         <span class="balance-value">
           <span class="coin-amount">${escapeHTML(amount)}</span>
           <img class="coin-icon loading-image" src="${escapeHTML(iconUrl)}" alt="PsyCoin" loading="eager" decoding="async" />
+          ${vipMarkup}
         </span>
       `;
     }
@@ -802,8 +871,19 @@ async def shop_app() -> str:
       const collectibles = data.items.filter(item => item.item_type === 'collectible');
       const wisdom = data.items.find(item => item.item_type === 'wisdom_sphere');
       const premium = data.items.find(item => item.item_type.startsWith('privilege_'));
+      const ownedCollectibles = Array.from(
+        new Map(
+          data.purchases
+            .filter(item => item.item_type === 'collectible')
+            .map(item => [item.item_id, item])
+        ).values()
+      );
+      const ownedPremium = data.purchases.find(
+        item => item.item_type === 'privilege_custom_battle_topic'
+      );
+      const premiumBadge = ownedPremium || null;
 
-      balance.innerHTML = renderBalance(data.currency_icon_url, data.token_balance);
+      balance.innerHTML = renderBalance(data.currency_icon_url, data.token_balance, premiumBadge);
       profileStatus.textContent = statusLabels[data.status] || data.status;
       profileScore.textContent = `${data.subjectivity_score}/100`;
       profileBalance.innerHTML = coinMarkup(
@@ -813,6 +893,22 @@ async def shop_app() -> str:
       );
       profileSummary.textContent = data.profile_summary ||
         'Психологический портрет еще формируется.';
+      if (ownedCollectibles.length) {
+        profileCollectibles.classList.add('visible');
+        profileCollectiblesList.innerHTML = ownedCollectibles.map(item => `
+          <img
+            class="profile-collectible loading-image"
+            src="${escapeHTML(item.image_url)}"
+            alt="${escapeHTML(item.title)}"
+            title="${escapeHTML(item.title)}"
+            loading="lazy"
+            decoding="async"
+          />
+        `).join('');
+      } else {
+        profileCollectibles.classList.remove('visible');
+        profileCollectiblesList.innerHTML = '';
+      }
 
       itemsBox.innerHTML = collectibles.map(item => {
         const [kind, label] = typeLabel(item.item_type);
