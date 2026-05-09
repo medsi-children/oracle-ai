@@ -497,15 +497,20 @@ async def shop_app() -> str:
       display: inline-flex;
       align-items: center;
       gap: 10px;
-      font-size: 38px;
-      line-height: 1;
+      font-size: 42px;
+      line-height: 1.05;
       font-weight: 800;
       color: var(--coin);
     }
+    .profile-balance-value img + * {
+      font-size: 42px;
+      line-height: 1.05;
+      font-weight: 800;
+    }
     .profile-balance-value .coin-icon {
-      width: 32px;
-      height: 32px;
-      flex-basis: 32px;
+      width: 48px;
+      height: 48px;
+      flex-basis: 48px;
     }
     .loading-image {
       position: relative;
