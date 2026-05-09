@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 
 class MessageCreate(BaseModel):
@@ -35,3 +35,10 @@ class MessageResponse(BaseModel):
     subjectivity_score: int | None = None
     reply_markup: InlineKeyboardMarkup | None = None
     intro_animation: list[ChatAnimationStep] | None = None
+
+    @computed_field
+    @property
+    def reply_markup_json(self) -> str | None:
+        if self.reply_markup is None:
+            return None
+        return self.reply_markup.model_dump_json()
