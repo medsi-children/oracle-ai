@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from html import escape
 from uuid import UUID
 
 from sqlalchemy import select
@@ -152,7 +153,7 @@ def format_first_contact() -> str:
 
 def first_contact_intro_animation() -> list[ChatAnimationStep]:
     def terminal_line(text: str, duration_ms: int = 2200) -> ChatAnimationStep:
-        return ChatAnimationStep(text=f"```text\n{text}\n```", duration_ms=duration_ms)
+        return ChatAnimationStep(text=f"<pre>{escape(text)}</pre>", duration_ms=duration_ms)
 
     return [
         terminal_line("СИСТЕМА ETHOS: Соединение..."),

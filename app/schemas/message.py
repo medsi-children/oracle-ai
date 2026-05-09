@@ -23,7 +23,7 @@ class InlineKeyboardMarkup(BaseModel):
 class ChatAnimationStep(BaseModel):
     text: str
     duration_ms: int = 2200
-    parse_mode: str = "Markdown"
+    parse_mode: str = "HTML"
 
 
 class MessageResponse(BaseModel):
