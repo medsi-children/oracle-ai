@@ -176,6 +176,9 @@ async def shop_app() -> str:
       height: 20px;
       object-fit: contain;
       flex: 0 0 20px;
+      border-radius: 999px;
+      opacity: 0;
+      transition: opacity .28s ease, transform .28s ease;
     }
     .tabs {
       display: grid;
@@ -273,6 +276,8 @@ async def shop_app() -> str:
         linear-gradient(180deg, #2d1b25, #151017);
       box-shadow: 0 18px 30px rgba(0, 0, 0, .28);
       animation: itemPulse 3.8s ease-in-out infinite;
+      opacity: 0;
+      transition: opacity .34s ease, transform .34s ease;
     }
     @keyframes itemPulse {
       0%, 100% {
@@ -388,6 +393,8 @@ async def shop_app() -> str:
         0 0 36px rgba(255, 184, 202, .16),
         0 24px 48px rgba(0, 0, 0, .3);
       animation: spherePulse 2.8s ease-in-out infinite;
+      opacity: 0;
+      transition: opacity .34s ease, transform .34s ease;
     }
     @keyframes aura {
       0%, 100% { transform: scale(1); opacity: .9; }
@@ -499,6 +506,33 @@ async def shop_app() -> str:
       width: 32px;
       height: 32px;
       flex-basis: 32px;
+    }
+    .loading-image {
+      position: relative;
+      overflow: hidden;
+      background:
+        linear-gradient(110deg, rgba(255, 255, 255, .04) 20%, rgba(255, 255, 255, .14) 36%, rgba(255, 255, 255, .04) 52%),
+        radial-gradient(circle at 30% 30%, rgba(255,255,255,.08), transparent 52%),
+        linear-gradient(180deg, rgba(45, 27, 37, .95), rgba(21, 16, 23, .98));
+      background-size: 220% 100%, auto, auto;
+      animation:
+        imageShimmer 1.8s linear infinite,
+        itemPulse 3.8s ease-in-out infinite;
+    }
+    .coin-icon.loading-image {
+      animation: imageShimmer 1.5s linear infinite;
+    }
+    .sphere-image.loading-image {
+      animation:
+        imageShimmer 1.8s linear infinite,
+        spherePulse 2.8s ease-in-out infinite;
+    }
+    .image-ready {
+      opacity: 1;
+    }
+    @keyframes imageShimmer {
+      0% { background-position: 180% 0, 0 0, 0 0; }
+      100% { background-position: -40% 0, 0 0, 0 0; }
     }
     .empty {
       border-radius: 22px;
@@ -694,7 +728,7 @@ async def shop_app() -> str:
     function coinMarkup(iconUrl, amount, className = 'price') {
       return `
         <span class="${className}">
-          <img class="coin-icon" src="${escapeHTML(iconUrl)}" alt="PsyCoin" />
+          <img class="coin-icon loading-image" src="${escapeHTML(iconUrl)}" alt="PsyCoin" loading="eager" decoding="async" />
           ${escapeHTML(amount)}
         </span>
       `;
@@ -703,10 +737,30 @@ async def shop_app() -> str:
     function renderBalance(iconUrl, amount) {
       return `
         <span class="balance-value">
-          <img class="coin-icon" src="${escapeHTML(iconUrl)}" alt="PsyCoin" />
+          <img class="coin-icon loading-image" src="${escapeHTML(iconUrl)}" alt="PsyCoin" loading="eager" decoding="async" />
           ${escapeHTML(amount)}
         </span>
       `;
+    }
+
+    function revealImage(img) {
+      img.classList.remove('loading-image');
+      img.classList.add('image-ready');
+    }
+
+    function hydrateImages(scope = document) {
+      scope.querySelectorAll('img').forEach(img => {
+        if (img.dataset.hydrated === 'true') return;
+        img.dataset.hydrated = 'true';
+
+        const done = () => revealImage(img);
+        img.addEventListener('load', done, { once: true });
+        img.addEventListener('error', done, { once: true });
+
+        if (img.complete && img.naturalWidth > 0) {
+          revealImage(img);
+        }
+      });
     }
 
     async function load() {
@@ -747,9 +801,11 @@ async def shop_app() -> str:
           <article class="card item">
             <div class="item-head">
               <img
-                class="item-media"
+                class="item-media loading-image"
                 src="${escapeHTML(item.image_url)}"
                 alt="${escapeHTML(item.title)}"
+                loading="lazy"
+                decoding="async"
               />
               <div class="item-copy">
                 <div class="item-top">
@@ -769,6 +825,8 @@ async def shop_app() -> str:
 
       if (wisdom) {
         wisdomImage.src = wisdom.image_url;
+        wisdomImage.classList.add('loading-image');
+        wisdomImage.classList.remove('image-ready');
         wisdomTitle.textContent = wisdom.title;
         wisdomDescription.textContent = wisdom.description;
         wisdomPrice.innerHTML = coinMarkup(wisdom.currency_icon_url, wisdom.price_tokens);
@@ -787,9 +845,11 @@ async def shop_app() -> str:
               <p class="premium-copy">${escapeHTML(premium.description)}</p>
             </div>
             <img
-              class="item-media premium-media"
+              class="item-media premium-media loading-image"
               src="${escapeHTML(premium.image_url)}"
               alt="${escapeHTML(premium.title)}"
+              loading="lazy"
+              decoding="async"
             />
           </div>
           <div class="item-meta">
@@ -802,6 +862,8 @@ async def shop_app() -> str:
           </div>
         </article>
       ` : '<div class="empty">Премиум пока недоступен.</div>';
+
+      hydrateImages(document);
     }
 
     async function buyById(itemId) {
