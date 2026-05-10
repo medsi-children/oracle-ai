@@ -13,6 +13,9 @@ class MarketplaceItemRead(BaseModel):
     item_type: str
     image_url: str
     currency_icon_url: str
+    is_repeatable: bool
+    is_owned: bool
+    can_purchase: bool
     is_active: bool
 
     model_config = ConfigDict(from_attributes=True)
@@ -42,6 +45,7 @@ class MarketplaceState(BaseModel):
     star_exchange_enabled: bool
     items: list[MarketplaceItemRead]
     purchases: list[MarketplacePurchaseRead]
+    inventory: list[MarketplacePurchaseRead]
 
 
 class BuyRequest(BaseModel):
@@ -54,6 +58,8 @@ class BuyResponse(BaseModel):
     ok: bool
     message: str
     token_balance: int
+    purchase_title: str | None = None
+    purchase_item_type: str | None = None
 
 
 class StarTopUpRequest(BaseModel):

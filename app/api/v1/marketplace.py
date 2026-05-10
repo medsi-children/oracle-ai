@@ -22,6 +22,7 @@ from app.services.marketplace import (
     PSYCOIN_ICON_URL,
     get_item_image_url,
     list_active_items,
+    list_inventory_items,
     purchase_item,
 )
 
@@ -67,6 +68,20 @@ async def marketplace_state(
         )
         for purchase, item in purchases_result.all()
     ]
+    inventory_rows = await list_inventory_items(db, user)
+    inventory = [
+        MarketplacePurchaseRead(
+            id=purchase.id,
+            item_id=item.id,
+            title=item.title,
+            price_tokens=purchase.price_tokens,
+            item_type=item.item_type,
+            image_url=get_item_image_url(item),
+            currency_icon_url=PSYCOIN_ICON_URL,
+            created_at=purchase.created_at,
+        )
+        for purchase, item in inventory_rows
+    ]
     return MarketplaceState(
         telegram_id=telegram_id,
         lifecycle_status=user.lifecycle_status,
@@ -90,11 +105,15 @@ async def marketplace_state(
                 item_type=item.item_type,
                 image_url=item.image_url,
                 currency_icon_url=PSYCOIN_ICON_URL,
+                is_repeatable=item.is_repeatable,
+                is_owned=item.is_owned,
+                can_purchase=item.can_purchase,
                 is_active=True,
             )
             for index, item in enumerate(items, start=1)
         ],
         purchases=purchases,
+        inventory=inventory,
     )
 
 
@@ -121,6 +140,8 @@ async def buy(payload: BuyRequest, db: AsyncSession = Depends(get_db)) -> BuyRes
         ok=ok,
         message=message,
         token_balance=user.token_balance,
+        purchase_title=item.title if ok else None,
+        purchase_item_type=item.item_type if ok else None,
     )
 
 

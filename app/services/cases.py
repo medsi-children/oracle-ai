@@ -4,6 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.case import Case
+from app.services.llm import clean_generated_text, openrouter_chat
 
 SEED_CASES = [
     {
@@ -392,4 +393,50 @@ async def get_random_case(db: AsyncSession, *, exclude_ids: set | None = None) -
         return case
     if case is None:
         raise RuntimeError("No active ETHOS cases found")
+    return case
+
+
+async def create_custom_case(db: AsyncSession, topic: str) -> Case:
+    prompt = topic.strip()
+    title = prompt[:120] or "Пользовательский ETHOS-кейс"
+    try:
+        generated = await openrouter_chat(
+            [
+                {
+                    "role": "system",
+                    "content": (
+                        "Ты создаешь короткий ETHOS-кейс на русском по заданной теме. "
+                        "Верни plain text без markdown. Структура: Кейс, Напряжение, Вопрос. "
+                        "Проверяй ответственность, субъектность, честность и способность "
+                        "видеть последствия выбора."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": f"Тема кейса: {prompt}",
+                },
+            ],
+            temperature=0.45,
+            max_tokens=500,
+        )
+        prompt = clean_generated_text(generated, split_sections=True)
+    except Exception:
+        prompt = (
+            f"Кейс\n\n{topic.strip()}\n\n"
+            "Напряжение\n\n"
+            "Нужно выбрать позицию так, чтобы не спрятаться за красивой формулировкой "
+            "и не переложить ответственность на обстоятельства.\n\n"
+            "Вопрос\n\n"
+            "Какой выбор здесь сохранит достоинство, честность и субъектность?"
+        )
+
+    case = Case(
+        title=title,
+        category="custom",
+        difficulty=2,
+        prompt=prompt,
+        is_active=False,
+    )
+    db.add(case)
+    await db.flush()
     return case

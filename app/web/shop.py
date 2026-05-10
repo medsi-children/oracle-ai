@@ -364,6 +364,11 @@ async def shop_app() -> str:
     .badge.collectible { color: #ffe1b7; }
     .badge.recommendation { color: #ffd5ef; }
     .badge.privilege { color: #ffd1dc; }
+    .badge.owned {
+      color: #ffe9b9;
+      border-color: rgba(255, 225, 185, .22);
+      background: rgba(255, 225, 185, .06);
+    }
     .item p, .profile-copy, .premium-copy {
       margin: 0;
       color: var(--text-soft);
@@ -634,9 +639,9 @@ async def shop_app() -> str:
       letter-spacing: .08em;
     }
     .profile-collectibles-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(116px, 1fr));
+      gap: 12px;
     }
     .profile-collectible {
       width: 54px;
@@ -651,6 +656,55 @@ async def shop_app() -> str:
       opacity: 0;
       transition: opacity .28s ease, transform .28s ease;
       animation: itemPulse 4.6s ease-in-out infinite;
+    }
+    .inventory-tile {
+      display: grid;
+      justify-items: center;
+      gap: 10px;
+      padding: 12px 10px;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 214, 228, .12);
+      background: rgba(255, 255, 255, .03);
+      text-align: center;
+    }
+    .inventory-tile span {
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.3;
+    }
+    .purchase-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      display: none;
+      padding: 18px;
+      background: rgba(13, 8, 11, .84);
+      backdrop-filter: blur(14px);
+      place-items: center;
+    }
+    .purchase-overlay.visible {
+      display: grid;
+    }
+    .purchase-modal {
+      width: min(100%, 520px);
+      display: grid;
+      gap: 18px;
+      padding: 28px 22px 22px;
+      text-align: center;
+    }
+    .purchase-modal h2 {
+      font-size: clamp(30px, 7vw, 44px);
+      line-height: 1.02;
+    }
+    .purchase-modal p {
+      margin: 0;
+      color: var(--text-soft);
+      line-height: 1.55;
+    }
+    .purchase-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
     }
     .loading-image {
       position: relative;
@@ -853,15 +907,26 @@ async def shop_app() -> str:
               <strong id="profileBalance">...</strong>
             </div>
           </div>
-          <p class="profile-copy" id="profileSummary"></p>
           <div class="profile-collectibles" id="profileCollectibles">
-            <div class="profile-collectibles-title">Коллекция</div>
+            <div class="profile-collectibles-title">Инвентарь</div>
             <div class="profile-collectibles-list" id="profileCollectiblesList"></div>
           </div>
+          <p class="profile-copy" id="profileSummary"></p>
         </div>
       </div>
     </section>
   </main>
+
+  <div class="purchase-overlay" id="purchaseOverlay">
+    <div class="card purchase-modal">
+      <h2 id="purchaseTitle">Поздравляем с покупкой</h2>
+      <p id="purchaseText">Предмет уже находится в вашем профиле.</p>
+      <div class="purchase-actions">
+        <button class="buy" id="purchaseProfileButton" type="button">Открыть профиль</button>
+        <button class="tab active" id="purchaseCloseButton" type="button">Закрыть</button>
+      </div>
+    </div>
+  </div>
 
   <script>
     const tg = window.Telegram?.WebApp;
@@ -896,6 +961,11 @@ async def shop_app() -> str:
     const withdrawStarsButton = document.getElementById('withdrawStarsButton');
     const topUpStarsButton = document.getElementById('topUpStarsButton');
     const balanceDevCard = document.getElementById('balanceDevCard');
+    const purchaseOverlay = document.getElementById('purchaseOverlay');
+    const purchaseTitle = document.getElementById('purchaseTitle');
+    const purchaseText = document.getElementById('purchaseText');
+    const purchaseProfileButton = document.getElementById('purchaseProfileButton');
+    const purchaseCloseButton = document.getElementById('purchaseCloseButton');
 
     const statusLabels = {
       object: 'Объект',
@@ -920,6 +990,10 @@ async def shop_app() -> str:
       if (type === 'wisdom_sphere') return ['recommendation', 'Сфера'];
       if (type.startsWith('privilege_')) return ['privilege', 'Подписка'];
       return ['collectible', 'Коллекция'];
+    }
+
+    function isInventoryType(type) {
+      return type === 'collectible' || type.startsWith('privilege_');
     }
 
     function coinMarkup(iconUrl, amount, className = 'price') {
@@ -983,6 +1057,16 @@ async def shop_app() -> str:
       balanceDevCard.textContent = 'В разработке...';
     }
 
+    function showPurchaseOverlay(title, text) {
+      purchaseTitle.textContent = title;
+      purchaseText.textContent = text;
+      purchaseOverlay.classList.add('visible');
+    }
+
+    function hidePurchaseOverlay() {
+      purchaseOverlay.classList.remove('visible');
+    }
+
     async function load() {
       if (!telegramId) {
         notice.textContent = 'Откройте магазин из Telegram или передайте telegram_id в ссылке.';
@@ -1006,13 +1090,7 @@ async def shop_app() -> str:
       const collectibles = data.items.filter(item => item.item_type === 'collectible');
       const wisdom = data.items.find(item => item.item_type === 'wisdom_sphere');
       const premium = data.items.find(item => item.item_type.startsWith('privilege_'));
-      const ownedCollectibles = Array.from(
-        new Map(
-          data.purchases
-            .filter(item => item.item_type === 'collectible')
-            .map(item => [item.item_id, item])
-        ).values()
-      );
+      const ownedInventory = data.inventory || [];
       const ownedPremium = data.purchases.find(
         item => item.item_type === 'privilege_custom_battle_topic'
       );
@@ -1032,17 +1110,20 @@ async def shop_app() -> str:
       );
       profileSummary.textContent = data.profile_summary ||
         'Психологический портрет еще формируется.';
-      if (ownedCollectibles.length) {
+      if (ownedInventory.length) {
         profileCollectibles.classList.add('visible');
-        profileCollectiblesList.innerHTML = ownedCollectibles.map(item => `
-          <img
-            class="profile-collectible loading-image"
-            src="${escapeHTML(item.image_url)}"
-            alt="${escapeHTML(item.title)}"
-            title="${escapeHTML(item.title)}"
-            loading="lazy"
-            decoding="async"
-          />
+        profileCollectiblesList.innerHTML = ownedInventory.map(item => `
+          <div class="inventory-tile">
+            <img
+              class="profile-collectible loading-image"
+              src="${escapeHTML(item.image_url)}"
+              alt="${escapeHTML(item.title)}"
+              title="${escapeHTML(item.title)}"
+              loading="lazy"
+              decoding="async"
+            />
+            <span>${escapeHTML(item.title)}</span>
+          </div>
         `).join('');
       } else {
         profileCollectibles.classList.remove('visible');
@@ -1051,7 +1132,9 @@ async def shop_app() -> str:
 
       itemsBox.innerHTML = collectibles.map(item => {
         const [kind, label] = typeLabel(item.item_type);
-        const disabled = data.token_balance < item.price_tokens ? 'disabled' : '';
+        const disabled = !item.can_purchase || data.token_balance < item.price_tokens ? 'disabled' : '';
+        const buttonLabel = item.is_owned ? 'Уже в профиле' : 'Купить';
+        const ownedBadge = item.is_owned ? '<span class="badge owned">Уже ваш</span>' : '';
         return `
           <article class="card item">
             <div class="item-head">
@@ -1065,14 +1148,17 @@ async def shop_app() -> str:
               <div class="item-copy">
                 <div class="item-top">
                   <h2>${escapeHTML(item.title)}</h2>
-                  <span class="badge ${kind}">${label}</span>
+                  <div>
+                    <span class="badge ${kind}">${label}</span>
+                    ${ownedBadge}
+                  </div>
                 </div>
                 <p>${escapeHTML(item.description)}</p>
               </div>
             </div>
             <div class="item-meta">
               ${coinMarkup(item.currency_icon_url, item.price_tokens)}
-              <button class="buy" ${disabled} onclick="buyById('${item.id}')">Купить</button>
+              <button class="buy" ${disabled} onclick="buyById('${item.id}')">${buttonLabel}</button>
             </div>
           </article>
         `;
@@ -1085,7 +1171,7 @@ async def shop_app() -> str:
         wisdomTitle.textContent = wisdom.title;
         wisdomDescription.textContent = wisdom.description;
         wisdomPrice.innerHTML = coinMarkup(wisdom.currency_icon_url, wisdom.price_tokens);
-        wisdomBuyButton.disabled = data.token_balance < wisdom.price_tokens;
+        wisdomBuyButton.disabled = !wisdom.can_purchase || data.token_balance < wisdom.price_tokens;
         wisdomBuyButton.onclick = () => buyById(wisdom.id);
       }
 
@@ -1095,7 +1181,10 @@ async def shop_app() -> str:
             <div class="item-copy">
               <div class="item-top">
                 <h2>${escapeHTML(premium.title)}</h2>
-                <span class="badge privilege">Подписка</span>
+                <div>
+                  <span class="badge privilege">Подписка</span>
+                  ${premium.is_owned ? '<span class="badge owned">Активно</span>' : ''}
+                </div>
               </div>
               <p class="premium-copy">${escapeHTML(premium.description)}</p>
             </div>
@@ -1111,9 +1200,9 @@ async def shop_app() -> str:
             ${coinMarkup(premium.currency_icon_url, premium.price_tokens)}
             <button
               class="buy"
-              ${data.token_balance < premium.price_tokens ? 'disabled' : ''}
+              ${!premium.can_purchase || data.token_balance < premium.price_tokens ? 'disabled' : ''}
               onclick="buyById('${premium.id}')"
-            >Купить</button>
+            >${premium.is_owned ? 'Уже активно' : 'Купить'}</button>
           </div>
         </article>
       ` : '<div class="empty">Премиум пока недоступен.</div>';
@@ -1132,8 +1221,18 @@ async def shop_app() -> str:
         })
       });
       const data = await res.json();
+      if (!res.ok || !data.ok) {
+        notice.textContent = data.message || 'Покупка не выполнена.';
+        return;
+      }
       notice.textContent = data.message || 'Готово.';
       await load();
+      if (isInventoryType(data.purchase_item_type || '')) {
+        showPurchaseOverlay(
+          'Поздравляем с покупкой',
+          `${data.purchase_title || 'Предмет'} уже находится в вашем профиле, во вкладке Инвентарь.`
+        );
+      }
     }
 
     document.querySelectorAll('.tab').forEach(button => {
@@ -1155,6 +1254,14 @@ async def shop_app() -> str:
 
     withdrawStarsButton.addEventListener('click', showDevelopmentCard);
     topUpStarsButton.addEventListener('click', showDevelopmentCard);
+    purchaseProfileButton.addEventListener('click', () => {
+      hidePurchaseOverlay();
+      openPanel('profilePanel');
+    });
+    purchaseCloseButton.addEventListener('click', hidePurchaseOverlay);
+    purchaseOverlay.addEventListener('click', event => {
+      if (event.target === purchaseOverlay) hidePurchaseOverlay();
+    });
 
     load();
   </script>

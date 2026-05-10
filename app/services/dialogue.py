@@ -30,7 +30,7 @@ from app.services.battles import (
     get_latest_battle,
     join_waiting_battle,
 )
-from app.services.cases import get_random_case
+from app.services.cases import create_custom_case, get_random_case
 from app.services.group_discussions import (
     DISCUSSION_ENTRY_OPTIONS,
     create_case_discussion,
@@ -43,7 +43,7 @@ from app.services.group_discussions import (
 )
 from app.services.llm import SUPPORT_SYSTEM_PROMPT, openrouter_chat
 from app.services.marketplace import buy_item, format_shop, user_owns_item_type
-from app.services.news import get_or_create_news_case
+from app.services.news import create_custom_news_case, get_or_create_news_case
 from app.services.summaries import create_due_summaries
 
 
@@ -280,6 +280,19 @@ def format_case(case: Case) -> str:
     )
 
 
+def normalize_command_token(token: str) -> str:
+    clean = token.strip().lower()
+    if clean.startswith("/") and "@" in clean:
+        return clean.split("@", maxsplit=1)[0]
+    return clean
+
+
+async def has_custom_topic_privilege(db: AsyncSession, user: User) -> bool:
+    if is_admin(user):
+        return True
+    return await user_owns_item_type(db, user, "privilege_custom_battle_topic")
+
+
 def format_onboarding_case(case: Case, step: int) -> str:
     return (
         "Испытание ETHOS\n\n"
@@ -317,7 +330,9 @@ def format_help() -> str:
         "В группе доступны баттлы, новости и кейсы.\n\n"
         "Команды:\n"
         "/case — короткий ETHOS-кейс с оценкой и псикоинами\n"
+        "/case тема — свой кейс, если куплена привилегия\n"
         "/news — Sentinel Mode: реальная новость как этический кейс\n"
+        "/news тема — свой новостной разбор, если куплена привилегия\n"
         "/battle — создать баттл на тему Оракула\n"
         "/battle тема — создать баттл на свою тему, если куплена привилегия\n"
         "/joinbattle — войти вторым участником\n"
@@ -467,7 +482,7 @@ async def handle_user_text(
     chat_type: str | None = None,
 ) -> tuple[str, str, int, InlineKeyboardMarkup | None]:
     clean = text.strip()
-    command = clean.split(maxsplit=1)[0].lower()
+    command = normalize_command_token(clean.split(maxsplit=1)[0])
     admin_user = is_admin(user)
 
     if admin_user:
@@ -479,7 +494,12 @@ async def handle_user_text(
         if admin_reply is not None:
             return admin_reply, "admin_command", 0, None
         if command == "/case" and chat_type not in {"group", "supergroup"}:
-            case = await get_random_case(db)
+            parts = clean.split(maxsplit=1)
+            case = (
+                await create_custom_case(db, parts[1].strip())
+                if len(parts) > 1 and parts[1].strip()
+                else await get_random_case(db)
+            )
             return (
                 format_admin_success("Админ-превью кейса\n\n" + format_case(case)),
                 "admin_case_preview",
@@ -487,7 +507,12 @@ async def handle_user_text(
                 None,
             )
         if command == "/news" and chat_type not in {"group", "supergroup"}:
-            item = await get_or_create_news_case(db)
+            parts = clean.split(maxsplit=1)
+            item = (
+                await create_custom_news_case(db, parts[1].strip())
+                if len(parts) > 1 and parts[1].strip()
+                else await get_or_create_news_case(db)
+            )
             return (
                 format_admin_success(
                     "Админ-превью Sentinel Mode\n\n"
@@ -708,8 +733,18 @@ async def handle_user_text(
             None,
         )
     if command == "/case":
+        parts = clean.split(maxsplit=1)
+        topic = parts[1].strip() if len(parts) > 1 else None
+        if topic and not await has_custom_topic_privilege(db, user):
+            return (
+                "Своя тема кейса доступна после покупки привилегии в магазине. "
+                "Запустите /case без темы или активируйте подписку в /shop.",
+                "case_topic_locked",
+                0,
+                None,
+            )
         if chat_type in {"group", "supergroup"}:
-            case = await get_random_case(db)
+            case = await create_custom_case(db, topic) if topic else await get_random_case(db)
             discussion = await create_case_discussion(db, user=user, chat_id=chat_id, case=case)
             return (
                 format_discussion_prompt(discussion),
@@ -717,11 +752,21 @@ async def handle_user_text(
                 0,
                 discussion_join_reply_markup(discussion.id),
             )
-        case = await get_random_case(db)
+        case = await create_custom_case(db, topic) if topic else await get_random_case(db)
         session.state = f"case:{case.id}:1"
         return format_case(case), "case_prompt", 0, None
     if command == "/news":
-        item = await get_or_create_news_case(db)
+        parts = clean.split(maxsplit=1)
+        topic = parts[1].strip() if len(parts) > 1 else None
+        if topic and not await has_custom_topic_privilege(db, user):
+            return (
+                "Своя тема новости доступна после покупки привилегии в магазине. "
+                "Запустите /news без темы или активируйте подписку в /shop.",
+                "news_topic_locked",
+                0,
+                None,
+            )
+        item = await create_custom_news_case(db, topic) if topic else await get_or_create_news_case(db)
         if chat_type in {"group", "supergroup"}:
             discussion = await create_news_discussion(db, user=user, chat_id=chat_id, item=item)
             return (
@@ -743,17 +788,14 @@ async def handle_user_text(
     if command == "/battle":
         parts = clean.split(maxsplit=1)
         topic = parts[1].strip() if len(parts) > 1 else None
-        if topic and not is_admin(user):
-            has_privilege = await user_owns_item_type(db, user, "privilege_custom_battle_topic")
-            if not has_privilege:
-                return (
-                    "Своя тема баттла — платная привилегия. Купите в /shop предмет "
-                    "«🎙 Право своей темы баттла» или запустите /battle без темы: "
-                    "тогда тему предложит Оракул.",
-                    "battle_topic_locked",
-                    0,
-                    None,
-                )
+        if topic and not await has_custom_topic_privilege(db, user):
+            return (
+                "Своя тема баттла — платная привилегия. Купите ее в /shop "
+                "или запустите /battle без темы: тогда тему предложит Оракул.",
+                "battle_topic_locked",
+                0,
+                None,
+            )
         battle = await create_battle(db, user=user, chat_id=chat_id, topic=topic)
         location = "группе" if chat_type in {"group", "supergroup"} else "личном чате"
         return (

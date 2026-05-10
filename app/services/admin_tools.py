@@ -225,6 +225,8 @@ async def shoplink_command(db: AsyncSession, clean: str) -> str:
 
 async def handle_admin_tool_command(db: AsyncSession, admin: User, clean: str) -> str | None:
     command = clean.split(maxsplit=1)[0].lower()
+    if command.startswith("/") and "@" in command:
+        command = command.split("@", maxsplit=1)[0]
     if command in {"/admin", "/help"}:
         return format_admin_help()
     if command == "/users":

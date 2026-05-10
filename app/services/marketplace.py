@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.marketplace import MarketplaceItem, MarketplacePurchase
 from app.models.token import TokenLedgerEntry
 from app.models.user import User
+from app.services.assessment import calculate_status
 from app.services.llm import clean_generated_text, openrouter_chat
 
 PSYCOIN_ICON_URL = "/static/shop/psycoin.png"
@@ -28,6 +29,7 @@ SEED_ITEMS = [
         ),
         "price_tokens": 10,
         "item_type": "collectible",
+        "is_repeatable": False,
         "asset_slug": "spark-awareness",
     },
     {
@@ -38,6 +40,7 @@ SEED_ITEMS = [
         ),
         "price_tokens": 35,
         "item_type": "collectible",
+        "is_repeatable": False,
         "asset_slug": "flame-serenity",
     },
     {
@@ -50,6 +53,7 @@ SEED_ITEMS = [
         ),
         "price_tokens": 90,
         "item_type": "collectible",
+        "is_repeatable": False,
         "asset_slug": "mirror-sincerity",
     },
     {
@@ -60,6 +64,7 @@ SEED_ITEMS = [
         ),
         "price_tokens": 220,
         "item_type": "collectible",
+        "is_repeatable": False,
         "asset_slug": "silver-ring",
     },
     {
@@ -70,6 +75,7 @@ SEED_ITEMS = [
         ),
         "price_tokens": 540,
         "item_type": "collectible",
+        "is_repeatable": False,
         "asset_slug": "golden-fox",
     },
     {
@@ -81,16 +87,18 @@ SEED_ITEMS = [
         ),
         "price_tokens": 999,
         "item_type": "collectible",
+        "is_repeatable": False,
         "asset_slug": "diamond-heart",
     },
     {
         "title": "👑 Премиум",
         "description": (
-            "Открывает право задавать собственную тему баттла и дает доступ "
-            "к привилегии внутри системы ETHOS."
+            "Открывает право задавать свою тему для баттла и кейса, "
+            "а также самому указывать новость или сюжет для разбора в Sentinel Mode."
         ),
         "price_tokens": 120,
         "item_type": "privilege_custom_battle_topic",
+        "is_repeatable": False,
         "asset_slug": "custom-battle-topic",
     },
     {
@@ -101,6 +109,7 @@ SEED_ITEMS = [
         ),
         "price_tokens": 20,
         "item_type": "wisdom_sphere",
+        "is_repeatable": True,
         "asset_slug": "wisdom-sphere",
     },
 ]
@@ -114,6 +123,9 @@ class StorefrontItem:
     price_tokens: int
     item_type: str
     image_url: str
+    is_repeatable: bool
+    is_owned: bool
+    can_purchase: bool
     currency_icon_url: str = PSYCOIN_ICON_URL
 
 
@@ -146,6 +158,7 @@ async def ensure_marketplace_items(db: AsyncSession) -> None:
         candidate.description = data["description"]
         candidate.price_tokens = data["price_tokens"]
         candidate.item_type = data["item_type"]
+        candidate.is_repeatable = bool(data["is_repeatable"])
         candidate.is_active = True
     await db.flush()
 
@@ -167,26 +180,34 @@ def get_item_image_url(item: MarketplaceItem) -> str:
     return collectible_asset(slug)
 
 
-async def get_wisdom_sphere_unlock_count(db: AsyncSession, user: User) -> int:
+def item_counts_as_inventory(item_type: str) -> bool:
+    return item_type == "collectible" or item_type.startswith("privilege_")
+
+
+async def get_user_purchases(
+    db: AsyncSession, user: User
+) -> list[tuple[MarketplacePurchase, MarketplaceItem]]:
     result = await db.execute(
         select(MarketplacePurchase, MarketplaceItem)
         .join(MarketplaceItem, MarketplaceItem.id == MarketplacePurchase.item_id)
-        .where(
-            MarketplacePurchase.user_id == user.id,
-            MarketplaceItem.item_type.in_(
-                {
-                    "wisdom_sphere",
-                    "recommendation_reaction_focus",
-                    "recommendation_honesty",
-                    "recommendation_boundaries",
-                    "recommendation_emotional_sovereignty",
-                    "recommendation_cognitive_clarity",
-                    "recommendation_active_intelligence",
-                }
-            ),
-        )
+        .where(MarketplacePurchase.user_id == user.id)
+        .order_by(MarketplacePurchase.created_at.desc())
     )
-    return len(result.all())
+    return list(result.all())
+
+
+async def get_wisdom_sphere_unlock_count(db: AsyncSession, user: User) -> int:
+    purchases = await get_user_purchases(db, user)
+    tracked_types = {
+        "wisdom_sphere",
+        "recommendation_reaction_focus",
+        "recommendation_honesty",
+        "recommendation_boundaries",
+        "recommendation_emotional_sovereignty",
+        "recommendation_cognitive_clarity",
+        "recommendation_active_intelligence",
+    }
+    return sum(1 for _purchase, item in purchases if item.item_type in tracked_types)
 
 
 def build_wisdom_sphere_description(level: int) -> str:
@@ -206,6 +227,8 @@ async def build_storefront_items(db: AsyncSession, user: User) -> list[Storefron
         .order_by(MarketplaceItem.price_tokens.asc(), MarketplaceItem.created_at.asc())
     )
     items = list(result.scalars().all())
+    purchases = await get_user_purchases(db, user)
+    owned_item_ids = {item.id for _purchase, item in purchases if not item.is_repeatable}
     unlock_count = await get_wisdom_sphere_unlock_count(db, user)
 
     storefront: list[StorefrontItem] = []
@@ -223,9 +246,13 @@ async def build_storefront_items(db: AsyncSession, user: User) -> list[Storefron
                     price_tokens=WISDOM_SPHERE_PRICES[unlock_count],
                     item_type=item.item_type,
                     image_url=get_item_image_url(item),
+                    is_repeatable=item.is_repeatable,
+                    is_owned=False,
+                    can_purchase=True,
                 )
             )
             continue
+        is_owned = item.id in owned_item_ids
         storefront.append(
             StorefrontItem(
                 item=item,
@@ -234,6 +261,9 @@ async def build_storefront_items(db: AsyncSession, user: User) -> list[Storefron
                 price_tokens=item.price_tokens,
                 item_type=item.item_type,
                 image_url=get_item_image_url(item),
+                is_repeatable=item.is_repeatable,
+                is_owned=is_owned,
+                can_purchase=not is_owned,
             )
         )
     return storefront
@@ -251,6 +281,22 @@ async def user_owns_item_type(db: AsyncSession, user: User, item_type: str) -> b
         .limit(1)
     )
     return result.scalar_one_or_none() is not None
+
+
+async def list_inventory_items(
+    db: AsyncSession, user: User
+) -> list[tuple[MarketplacePurchase, MarketplaceItem]]:
+    purchases = await get_user_purchases(db, user)
+    seen_item_ids = set()
+    inventory: list[tuple[MarketplacePurchase, MarketplaceItem]] = []
+    for purchase, item in purchases:
+        if not item_counts_as_inventory(item.item_type):
+            continue
+        if item.id in seen_item_ids:
+            continue
+        seen_item_ids.add(item.id)
+        inventory.append((purchase, item))
+    return inventory
 
 
 def fallback_recommendation(user: User, level: int) -> str:
@@ -362,6 +408,9 @@ async def build_wisdom_recommendation(user: User, *, level: int, price_tokens: i
 async def purchase_item(
     db: AsyncSession, user: User, storefront_item: StorefrontItem
 ) -> tuple[bool, str]:
+    if not storefront_item.can_purchase:
+        return False, f"Предмет «{storefront_item.title}» уже находится в вашем инвентаре."
+
     price_tokens = storefront_item.price_tokens
     if user.token_balance < price_tokens:
         return (
@@ -371,6 +420,7 @@ async def purchase_item(
         )
 
     user.token_balance -= price_tokens
+    user.status = calculate_status(user.subjectivity_score, user.token_balance)
     purchase = MarketplacePurchase(
         user_id=user.id,
         item_id=storefront_item.item.id,
@@ -417,7 +467,8 @@ async def format_shop(db: AsyncSession, user: User) -> str:
     items = await list_active_items(db, user)
     lines = ["Магазин", ""]
     for item in items:
-        lines.append(f"{item.title} — {item.price_tokens} псикоинов\n{item.description}")
+        status_line = "Уже в профиле" if item.is_owned else f"{item.price_tokens} псикоинов"
+        lines.append(f"{item.title} — {status_line}\n{item.description}")
     lines.append("\nДля покупки: /buy 1")
     return "\n\n".join(lines)
 

@@ -15,6 +15,7 @@ class MarketplaceItem(UuidPrimaryKeyMixin, CreatedAtMixin, Base):
     description: Mapped[str] = mapped_column(Text, nullable=False)
     price_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
     item_type: Mapped[str] = mapped_column(String(64), default="collectible", nullable=False)
+    is_repeatable: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
 

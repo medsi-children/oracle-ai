@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.news import NewsItem
-from app.services.llm import openrouter_chat
+from app.services.llm import clean_generated_text, openrouter_chat
 
 NEWS_FEEDS = [
     ("BBC World", "https://feeds.bbci.co.uk/news/world/rss.xml"),
@@ -142,6 +142,52 @@ async def get_or_create_news_case(db: AsyncSession) -> NewsItem:
         source="oracle_generated",
         summary=text,
         ethical_case=text,
+    )
+    db.add(item)
+    await db.flush()
+    return item
+
+
+async def create_custom_news_case(db: AsyncSession, topic: str) -> NewsItem:
+    title = topic.strip()[:300] or "Пользовательский новостной разбор"
+    try:
+        text = await openrouter_chat(
+            [
+                {
+                    "role": "system",
+                    "content": (
+                        "Ты создаешь разбор Sentinel Mode на русском по заданной пользователем "
+                        "новости или теме. Верни plain text без markdown. "
+                        "Структура: Новость, Дилемма, Вопрос. Не выдумывай лишних фактов, "
+                        "если вход короткий или неполный."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": f"Тема или новость для разбора: {topic.strip()}",
+                },
+            ],
+            temperature=0.35,
+            max_tokens=600,
+        )
+        ethical_case = clean_generated_text(text, split_sections=True)
+    except Exception:
+        ethical_case = (
+            f"Новость\n\n{topic.strip()}\n\n"
+            "Дилемма\n\n"
+            "Нужно отделить факт от реакции, а личную позицию от желания просто "
+            "примкнуть к шуму.\n\n"
+            "Вопрос\n\n"
+            "Что здесь требует ответственности, что стоит проверить, "
+            "и какой выбор сохранит достоинство?"
+        )
+
+    item = NewsItem(
+        title=title,
+        source="user_custom",
+        summary=ethical_case,
+        ethical_case=ethical_case,
+        is_active=False,
     )
     db.add(item)
     await db.flush()
