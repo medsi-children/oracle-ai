@@ -122,6 +122,14 @@ async def shop_app() -> str:
       background: linear-gradient(180deg, rgba(44, 28, 38, .9), rgba(21, 15, 20, .96));
       box-shadow: var(--shadow);
       backdrop-filter: blur(18px);
+      color: var(--text);
+      text-align: left;
+      cursor: pointer;
+      font: inherit;
+    }
+    .balance:hover {
+      border-color: rgba(255, 184, 202, .34);
+      transform: translateY(-1px);
     }
     .profile-button {
       grid-area: profile;
@@ -461,9 +469,70 @@ async def shop_app() -> str:
       min-width: 220px;
       justify-self: center;
     }
-    .premium-stage, .profile-stage {
+    .premium-stage, .profile-stage, .wallet-stage {
       display: grid;
       gap: 16px;
+    }
+    .wallet-shell {
+      min-height: 62vh;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      gap: 20px;
+      padding: 32px 18px;
+    }
+    .wallet-coin-wrap {
+      width: min(66vw, 280px);
+      aspect-ratio: 1 / 1;
+      display: grid;
+      place-items: center;
+      border-radius: 999px;
+      background:
+        radial-gradient(circle, rgba(255, 216, 161, .16), rgba(255, 216, 161, 0) 62%);
+      animation: aura 4s ease-in-out infinite;
+    }
+    .wallet-coin {
+      width: min(58vw, 220px);
+      aspect-ratio: 1 / 1;
+      object-fit: contain;
+      border-radius: 999px;
+      opacity: 0;
+      transition: opacity .34s ease, transform .34s ease;
+      animation: spherePulse 2.8s ease-in-out infinite;
+    }
+    .wallet-amount {
+      display: grid;
+      gap: 8px;
+      justify-items: center;
+    }
+    .wallet-amount strong {
+      font-size: clamp(44px, 13vw, 76px);
+      line-height: .95;
+      color: var(--coin);
+    }
+    .wallet-actions {
+      width: min(100%, 420px);
+      display: grid;
+      grid-template-columns: 56px minmax(0, 1fr);
+      gap: 10px;
+    }
+    .icon-buy {
+      min-width: 56px;
+      padding: 0;
+      font-size: 30px;
+      line-height: 1;
+    }
+    .dev-card {
+      display: none;
+      width: min(100%, 420px);
+      border-radius: 18px;
+      border: 1px dashed rgba(255, 214, 228, .18);
+      color: #ffd3df;
+      background: rgba(255, 255, 255, .04);
+      padding: 16px;
+    }
+    .dev-card.visible {
+      display: block;
     }
     .premium-card {
       display: grid;
@@ -617,6 +686,23 @@ async def shop_app() -> str:
       padding: 22px;
       color: var(--text-soft);
     }
+    .locked-view {
+      min-height: 100vh;
+      display: none;
+      place-items: center;
+      padding: 28px;
+      text-align: center;
+      color: var(--text);
+      font-size: clamp(28px, 8vw, 58px);
+      line-height: 1.08;
+      font-weight: 800;
+    }
+    body.locked main {
+      display: none;
+    }
+    body.locked .locked-view {
+      display: grid;
+    }
     @media (max-width: 840px) {
       header {
         grid-template-columns: minmax(0, 1fr) auto;
@@ -676,6 +762,9 @@ async def shop_app() -> str:
   </style>
 </head>
 <body>
+  <div class="locked-view" id="lockedView">
+    Ты здесь слишком рано. Ты еще не готов. Оракул ожидает тебя в чате
+  </div>
   <main>
     <header>
       <div class="hero">
@@ -685,10 +774,10 @@ async def shop_app() -> str:
           (персональные рекомендации)
         </p>
       </div>
-      <div class="balance">
+      <button class="balance" id="balanceButton" type="button">
         <span class="balance-label">Баланс</span>
         <strong class="balance-value" id="balance">...</strong>
-      </div>
+      </button>
       <button class="profile-button" id="profileButton" aria-label="Профиль">
         <svg class="profile-glyph" viewBox="0 0 24 24" aria-hidden="true">
           <circle cx="12" cy="8" r="3.5"></circle>
@@ -731,6 +820,25 @@ async def shop_app() -> str:
       <div class="premium-stage" id="premiumBox"></div>
     </section>
 
+    <section class="panel" id="balancePanel">
+      <div class="wallet-stage">
+        <div class="card wallet-shell">
+          <div class="wallet-coin-wrap">
+            <img class="wallet-coin loading-image" id="walletCoinImage" src="" alt="PsyCoin" />
+          </div>
+          <div class="wallet-amount">
+            <strong id="walletAmount">...</strong>
+            <span class="balance-label">PsyCoin</span>
+          </div>
+          <div class="wallet-actions">
+            <button class="buy icon-buy" id="topUpStarsButton" type="button" aria-label="Купить PsyCoin за звезды">+</button>
+            <button class="buy" id="withdrawStarsButton" type="button">⭐ Вывести в звезды</button>
+          </div>
+          <div class="dev-card" id="balanceDevCard">В разработке...</div>
+        </div>
+      </div>
+    </section>
+
     <section class="panel" id="profilePanel">
       <div class="profile-stage">
         <div class="card profile-card">
@@ -765,7 +873,9 @@ async def shop_app() -> str:
       qs.get('telegram_id') || tg?.initDataUnsafe?.user?.id || ''
     ).trim();
 
+    const balanceButton = document.getElementById('balanceButton');
     const balance = document.getElementById('balance');
+    const lockedView = document.getElementById('lockedView');
     const profileStatus = document.getElementById('profileStatus');
     const profileScore = document.getElementById('profileScore');
     const profileBalance = document.getElementById('profileBalance');
@@ -781,6 +891,11 @@ async def shop_app() -> str:
     const wisdomDescription = document.getElementById('wisdomDescription');
     const wisdomPrice = document.getElementById('wisdomPrice');
     const wisdomBuyButton = document.getElementById('wisdomBuyButton');
+    const walletCoinImage = document.getElementById('walletCoinImage');
+    const walletAmount = document.getElementById('walletAmount');
+    const withdrawStarsButton = document.getElementById('withdrawStarsButton');
+    const topUpStarsButton = document.getElementById('topUpStarsButton');
+    const balanceDevCard = document.getElementById('balanceDevCard');
 
     const statusLabels = {
       object: 'Объект',
@@ -852,6 +967,22 @@ async def shop_app() -> str:
       });
     }
 
+    function openPanel(panelId) {
+      document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
+      document.getElementById(panelId).classList.add('active');
+    }
+
+    function showLocked() {
+      document.body.classList.add('locked');
+      lockedView.textContent = 'Ты здесь слишком рано. Ты еще не готов. Оракул ожидает тебя в чате';
+    }
+
+    function showDevelopmentCard() {
+      balanceDevCard.classList.add('visible');
+      balanceDevCard.textContent = 'В разработке...';
+    }
+
     async function load() {
       if (!telegramId) {
         notice.textContent = 'Откройте магазин из Telegram или передайте telegram_id в ссылке.';
@@ -862,6 +993,10 @@ async def shop_app() -> str:
       const res = await fetch(
         `/api/v1/marketplace/state?telegram_id=${encodeURIComponent(telegramId)}`
       );
+      if (res.status === 403) {
+        showLocked();
+        return;
+      }
       if (!res.ok) {
         notice.textContent = 'Пользователь не найден. Сначала напишите боту /start.';
         return;
@@ -884,6 +1019,10 @@ async def shop_app() -> str:
       const premiumBadge = ownedPremium || null;
 
       balance.innerHTML = renderBalance(data.currency_icon_url, data.token_balance, premiumBadge);
+      walletCoinImage.src = data.currency_icon_url;
+      walletCoinImage.classList.add('loading-image');
+      walletCoinImage.classList.remove('image-ready');
+      walletAmount.textContent = data.token_balance;
       profileStatus.textContent = statusLabels[data.status] || data.status;
       profileScore.textContent = `${data.subjectivity_score}/100`;
       profileBalance.innerHTML = coinMarkup(
@@ -999,18 +1138,23 @@ async def shop_app() -> str:
 
     document.querySelectorAll('.tab').forEach(button => {
       button.addEventListener('click', () => {
-        document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
         document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
+        document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
         button.classList.add('active');
         document.getElementById(button.dataset.tab + 'Panel').classList.add('active');
       });
     });
 
-    profileButton.addEventListener('click', () => {
-      document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-      document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
-      document.getElementById('profilePanel').classList.add('active');
+    balanceButton.addEventListener('click', () => {
+      openPanel('balancePanel');
     });
+
+    profileButton.addEventListener('click', () => {
+      openPanel('profilePanel');
+    });
+
+    withdrawStarsButton.addEventListener('click', showDevelopmentCard);
+    topUpStarsButton.addEventListener('click', showDevelopmentCard);
 
     load();
   </script>

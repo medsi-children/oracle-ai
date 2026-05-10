@@ -5,17 +5,18 @@ import httpx
 from app.core.config import settings
 from app.services.admins import admin_ids
 
-
 PRIVATE_COMMANDS = [
     {"command": "start", "description": "Начать путь ETHOS"},
 ]
 
 GROUP_COMMANDS = [
     {"command": "battle", "description": "Открыть психологический баттл"},
+    {"command": "battlefee", "description": "Выбрать уровень баттла"},
     {"command": "joinbattle", "description": "Войти в открытый баттл"},
     {"command": "finishbattle", "description": "Завершить баттл"},
     {"command": "case", "description": "Получить ETHOS-кейс"},
     {"command": "news", "description": "Разобрать новость как этический кейс"},
+    {"command": "finishdiscussion", "description": "Завершить разбор"},
 ]
 
 ADMIN_COMMANDS = [
@@ -77,6 +78,7 @@ async def sync_telegram_bot_commands() -> str:
     return (
         "Меню команд Telegram обновлено.\n\n"
         "Личные чаты: только /start.\n"
-        "Группы: /battle, /joinbattle, /finishbattle, /case, /news.\n"
+        "Группы: /battle, /battlefee, /joinbattle, /finishbattle, /case, /news, "
+        "/finishdiscussion.\n"
         "Админ: полный набор команд."
     )

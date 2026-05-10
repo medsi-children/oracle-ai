@@ -11,7 +11,6 @@ from app.models.user import User
 from app.services.admin_reset import find_user_for_reset, reset_user_profile
 from app.services.telegram_menu import sync_telegram_bot_commands
 
-
 VALID_STATUSES = {"object", "seeker", "faithful", "keeper", "sighted", "subject"}
 ADMIN_SUCCESS = "Команда успешно выполнена!"
 ADMIN_ERROR = "Команда не выполнена."
@@ -67,7 +66,7 @@ async def format_users_list(db: AsyncSession, clean: str) -> str:
     lines = ["Пользователи:"]
     for user in users:
         lines.append(
-            f"{user_label(user)} | {user.status} | {user.subjectivity_score}/100 | "
+            f"{user_label(user)} | {user.lifecycle_status} | {user.status} | {user.subjectivity_score}/100 | "
             f"{user.token_balance} PsyCoin"
         )
     return format_admin_success("\n".join(lines))
@@ -104,6 +103,7 @@ async def format_user_card(db: AsyncSession, clean: str) -> str:
     return format_admin_success(
         f"{user_label(target)}\n\n"
         f"Telegram ID: {target.telegram_id}\n"
+        f"Внутренний статус: {target.lifecycle_status}\n"
         f"Статус: {target.status}\n"
         f"Индекс субъектности: {target.subjectivity_score}/100\n"
         f"Баланс: {target.token_balance} PsyCoin\n\n"
@@ -139,7 +139,7 @@ async def reset_command(db: AsyncSession, clean: str, *, admin: User) -> str:
     return format_admin_success(
         f"Профиль {label} полностью обнулен.\n\n"
         "Удалены история, сессии, оценки, summary, покупки и ledger псикоинов. "
-        "Статус: Объект. Баланс: 0."
+        "Внутренний статус: newbie. Статус: Объект. Баланс: 0."
     )
 
 

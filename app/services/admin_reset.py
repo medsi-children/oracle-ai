@@ -3,9 +3,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.assessment import Assessment
 from app.models.battle import Battle, BattleParticipant
+from app.models.group_activity import GroupDiscussion, GroupDiscussionParticipant
 from app.models.marketplace import MarketplacePurchase
 from app.models.message import Message
 from app.models.session import ConversationSession
+from app.models.stars import StarPaymentOrder, StarWithdrawalRequest
 from app.models.summary import Summary
 from app.models.token import TokenLedgerEntry
 from app.models.user import User
@@ -33,14 +35,25 @@ async def reset_user_profile(db: AsyncSession, user: User) -> None:
     await db.execute(delete(MarketplacePurchase).where(MarketplacePurchase.user_id == user.id))
     await db.execute(delete(BattleParticipant).where(BattleParticipant.user_id == user.id))
     await db.execute(
+        delete(GroupDiscussionParticipant).where(GroupDiscussionParticipant.user_id == user.id)
+    )
+    await db.execute(delete(StarPaymentOrder).where(StarPaymentOrder.user_id == user.id))
+    await db.execute(delete(StarWithdrawalRequest).where(StarWithdrawalRequest.user_id == user.id))
+    await db.execute(
         update(Battle)
         .where(Battle.created_by_user_id == user.id)
+        .values(created_by_user_id=None)
+    )
+    await db.execute(
+        update(GroupDiscussion)
+        .where(GroupDiscussion.created_by_user_id == user.id)
         .values(created_by_user_id=None)
     )
     await db.execute(delete(Assessment).where(Assessment.user_id == user.id))
     await db.execute(delete(ConversationSession).where(ConversationSession.user_id == user.id))
 
     user.status = "object"
+    user.lifecycle_status = "newbie"
     user.subjectivity_score = 0
     user.token_balance = 0
     user.profile_summary = None

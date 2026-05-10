@@ -15,6 +15,7 @@ class UserRead(BaseModel):
     telegram_id: int | None
     username: str | None
     first_name: str | None
+    lifecycle_status: str
     status: str
     subjectivity_score: int
     token_balance: int

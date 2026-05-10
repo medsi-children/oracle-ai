@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     admin_telegram_ids: str = "7659888703"
     public_webapp_url: str = "http://localhost:8000/app/shop"
     closed_group_invite_url: str = ""
+    psycoin_per_star: int = 20
+    psycoin_withdraw_min: int = 1000
+    star_exchange_enabled: bool = False
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

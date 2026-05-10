@@ -13,6 +13,7 @@ class User(UuidPrimaryKeyMixin, CreatedAtMixin, Base):
     telegram_id: Mapped[int | None] = mapped_column(BigInteger, unique=True, index=True)
     username: Mapped[str | None] = mapped_column(String(128), index=True)
     first_name: Mapped[str | None] = mapped_column(String(256))
+    lifecycle_status: Mapped[str] = mapped_column(String(64), default="newbie", nullable=False)
     status: Mapped[str] = mapped_column(String(64), default="object", nullable=False)
     subjectivity_score: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     token_balance: Mapped[int] = mapped_column(Integer, default=0, nullable=False)

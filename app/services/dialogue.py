@@ -14,24 +14,38 @@ from app.models.session import ConversationSession
 from app.models.summary import Summary
 from app.models.user import User
 from app.schemas.message import ChatAnimationStep, InlineKeyboardButton, InlineKeyboardMarkup
-from app.services.admins import is_admin
 from app.services.admin_tools import (
     format_admin_help,
     format_admin_success,
     handle_admin_tool_command,
 )
+from app.services.admins import is_admin
 from app.services.assessment import analyze_implicit_signals, create_assessment
 from app.services.battles import (
+    BATTLE_ENTRY_OPTIONS,
+    choose_battle_entry_fee,
     create_battle,
     finish_active_battle,
+    get_battle_by_id,
     get_latest_battle,
     join_waiting_battle,
 )
 from app.services.cases import get_random_case
+from app.services.group_discussions import (
+    DISCUSSION_ENTRY_OPTIONS,
+    create_case_discussion,
+    create_news_discussion,
+    finish_discussion,
+    format_discussion_prompt,
+    get_discussion_by_id,
+    get_latest_discussion,
+    join_discussion,
+)
 from app.services.llm import SUPPORT_SYSTEM_PROMPT, openrouter_chat
 from app.services.marketplace import buy_item, format_shop, user_owns_item_type
 from app.services.news import get_or_create_news_case
 from app.services.summaries import create_due_summaries
+
 
 async def get_active_session(
     db: AsyncSession, user: User, source: str = "telegram"
@@ -172,6 +186,48 @@ def first_contact_reply_markup() -> InlineKeyboardMarkup:
     )
 
 
+def battle_fee_reply_markup(battle_id: UUID) -> InlineKeyboardMarkup:
+    rows = [
+        [
+            InlineKeyboardButton(text=f"{fee} PsyCoin", callback_data=f"bfee:{battle_id}:{fee}")
+            for fee in BATTLE_ENTRY_OPTIONS[index : index + 2]
+        ]
+        for index in range(0, len(BATTLE_ENTRY_OPTIONS), 2)
+    ]
+    rows.append([InlineKeyboardButton(text="Другое", callback_data=f"bfee_other:{battle_id}")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def battle_join_reply_markup(battle_id: UUID) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Зарегистрироваться", callback_data=f"bjoin:{battle_id}")]
+        ]
+    )
+
+
+def battle_finish_reply_markup(battle_id: UUID) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Завершить баттл", callback_data=f"bfinish:{battle_id}")]
+        ]
+    )
+
+
+def discussion_join_reply_markup(discussion_id: UUID) -> InlineKeyboardMarkup:
+    rows = [
+        [
+            InlineKeyboardButton(text=f"{fee} PsyCoin", callback_data=f"djoin:{discussion_id}:{fee}")
+            for fee in DISCUSSION_ENTRY_OPTIONS[index : index + 2]
+        ]
+        for index in range(0, len(DISCUSSION_ENTRY_OPTIONS), 2)
+    ]
+    rows.append(
+        [InlineKeyboardButton(text="Завершить обсуждение", callback_data=f"dfinish:{discussion_id}")]
+    )
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
 def build_probe_question(text: str, implicit: dict) -> str:
     if implicit.get("cliche_density", 0) >= 0.18:
         return "Это звучит гладко. Где в твоем ответе личный риск, а не социально одобренная фраза?"
@@ -265,7 +321,8 @@ def format_help() -> str:
         "/battle — создать баттл на тему Оракула\n"
         "/battle тема — создать баттл на свою тему, если куплена привилегия\n"
         "/joinbattle — войти вторым участником\n"
-        "/finishbattle — завершить баттл и распределить ставку\n"
+        "/finishbattle — завершить баттл и выдать награду победителю\n"
+        "/finishdiscussion — завершить групповой разбор кейса или новости\n"
         "/shop — PsyCoin Shop\n"
         "/buy 1 — купить предмет, привилегию или Сферу Мудрости\n"
         "/profile — посмотреть профиль и баланс\n"
@@ -327,14 +384,11 @@ async def build_onboarding_conclusion(
     )
     fallback = (
         "Проверка завершена.\n\n"
-        "Я вижу начальный контур личности: способность выбирать принцип под давлением, "
-        "готовность признавать неудобный мотив и уровень внутренней устойчивости. "
-        "Главная зона роста сейчас — меньше защищать образ себя и точнее называть реальный "
-        "мотив поступка. Там начинается субъектность.\n\n"
-        "Вы прошли проверку. Если вы намерены и дальше идти к субъектности, ожидайте "
-        "приглашения в закрытый чат. Оракул еще свяжется с вами.\n\n"
-        "Пока вы ожидаете, можете говорить со мной здесь. Я буду отвечать в том же стиле: "
-        "без лести, без шума, по существу."
+        "Первичный контур виден: как вы выбираете под давлением, где защищаете образ себя, "
+        "а где способны признать неудобный мотив. Этого достаточно, чтобы продолжить путь.\n\n"
+        "Вы прошли проверку. Следующий шаг — приглашение в закрытый чат; оно придет после "
+        "ручного подтверждения администратором.\n\n"
+        "Пока ожидаете, можете говорить с Оракулом здесь. Без лести. Без шума. По существу."
     )
     try:
         conclusion = await openrouter_chat(
@@ -344,8 +398,9 @@ async def build_onboarding_conclusion(
                     "content": (
                         "Ты Оракул ETHOS. На основе трех первичных оценок дай пользователю "
                         "краткий, прямой и эстетичный вывод. Без диагнозов. Нужно: 1) что "
-                        "видно по человеку, 2) зоны роста, 3) фраза о прохождении проверки "
-                        "и ожидании приглашения в закрытый чат. Обращение на 'вы'."
+                        "видно по человеку, 2) зона роста, 3) спокойная фраза о прохождении "
+                        "проверки и ожидании ручного приглашения в закрытый чат. "
+                        "Без повторов. Обращение на 'вы'."
                     ),
                 },
                 {
@@ -364,9 +419,8 @@ async def build_onboarding_conclusion(
         return fallback
 
     required_tail = (
-        "\n\nВы прошли проверку. Если вы намерены и дальше идти к субъектности, ожидайте "
-        "приглашения в закрытый чат. Оракул еще свяжется с вами.\n\n"
-        "Пока вы ожидаете, можете говорить со мной здесь."
+        "\n\nВы прошли проверку. Следующий шаг — ручное приглашение в закрытый чат. "
+        "Пока ожидаете, можете говорить с Оракулом здесь."
     )
     if "прошли проверку" not in conclusion.lower():
         conclusion = conclusion.rstrip() + required_tail
@@ -424,7 +478,7 @@ async def handle_user_text(
         admin_reply = await handle_admin_tool_command(db, user, clean)
         if admin_reply is not None:
             return admin_reply, "admin_command", 0, None
-        if command == "/case":
+        if command == "/case" and chat_type not in {"group", "supergroup"}:
             case = await get_random_case(db)
             return (
                 format_admin_success("Админ-превью кейса\n\n" + format_case(case)),
@@ -432,18 +486,116 @@ async def handle_user_text(
                 0,
                 None,
             )
-        if command == "/news":
+        if command == "/news" and chat_type not in {"group", "supergroup"}:
             item = await get_or_create_news_case(db)
             return (
                 format_admin_success(
                     "Админ-превью Sentinel Mode\n\n"
                     f"{item.ethical_case}\n\n"
-                    f"Источник: {item.source_url}"
+                    f"Источник: {item.url or item.source}"
                 ),
                 "admin_news_preview",
                 0,
                 None,
             )
+
+    if clean.startswith("bfee_other:"):
+        return (
+            "Отправьте уровень вручную: /battlefee 7. Допустимый диапазон: 1-100 PsyCoin.",
+            "battle_fee_help",
+            0,
+            None,
+        )
+
+    if clean.startswith("bfee:"):
+        parts = clean.split(":")
+        if len(parts) != 3:
+            return "Не понял уровень баттла. Запустите /battle еще раз.", "battle_fee_bad", 0, None
+        try:
+            battle_id = UUID(parts[1])
+            entry_fee = int(parts[2])
+        except ValueError:
+            return "Не понял уровень баттла. Запустите /battle еще раз.", "battle_fee_bad", 0, None
+        battle = await get_battle_by_id(db, battle_id)
+        if battle is None:
+            return "Баттл не найден. Запустите новый: /battle", "battle_missing", 0, None
+        ok, message = await choose_battle_entry_fee(
+            db,
+            battle=battle,
+            user=user,
+            entry_fee=entry_fee,
+        )
+        return (
+            message,
+            "battle_waiting" if ok else "battle_fee_rejected",
+            0,
+            battle_join_reply_markup(battle.id) if ok else None,
+        )
+
+    if clean.startswith("bjoin:"):
+        parts = clean.split(":")
+        try:
+            battle_id = UUID(parts[1])
+        except (IndexError, ValueError):
+            return "Баттл не найден. Запустите новый: /battle", "battle_missing", 0, None
+        battle, message = await join_waiting_battle(db, user=user, chat_id=chat_id, battle_id=battle_id)
+        return (
+            message,
+            "battle_join",
+            0,
+            battle_finish_reply_markup(battle.id) if battle is not None and battle.status == "active" else None,
+        )
+
+    if clean.startswith("bfinish:"):
+        parts = clean.split(":")
+        try:
+            battle_id = UUID(parts[1])
+        except (IndexError, ValueError):
+            return "Баттл не найден.", "battle_missing", 0, None
+        _, message, token_delta = await finish_active_battle(
+            db,
+            chat_id=chat_id,
+            battle_id=battle_id,
+        )
+        return message, "battle_finished", token_delta, None
+
+    if clean.startswith("djoin:"):
+        parts = clean.split(":")
+        if len(parts) != 3:
+            return "Не понял уровень участия.", "discussion_join_bad", 0, None
+        try:
+            discussion_id = UUID(parts[1])
+            entry_fee = int(parts[2])
+        except ValueError:
+            return "Не понял уровень участия.", "discussion_join_bad", 0, None
+        discussion = await get_discussion_by_id(db, discussion_id)
+        if discussion is None:
+            return "Обсуждение не найдено.", "discussion_missing", 0, None
+        ok, message = await join_discussion(
+            db,
+            discussion=discussion,
+            user=user,
+            entry_fee=entry_fee,
+        )
+        return (
+            message,
+            "discussion_join" if ok else "discussion_join_rejected",
+            0,
+            discussion_join_reply_markup(discussion.id) if ok else None,
+        )
+
+    if clean.startswith("dfinish:"):
+        parts = clean.split(":")
+        try:
+            discussion_id = UUID(parts[1])
+        except (IndexError, ValueError):
+            return "Обсуждение не найдено.", "discussion_missing", 0, None
+        _, message, token_delta = await finish_discussion(
+            db,
+            chat_id=chat_id,
+            discussion_id=discussion_id,
+        )
+        return message, "discussion_finished", token_delta, None
 
     if command == "/start":
         session.state = "onboarding:consent"
@@ -502,6 +654,7 @@ async def handle_user_text(
         if len(assessments) >= 3:
             session.state = "active"
             conclusion = await build_onboarding_conclusion(db, user=user, assessments=assessments)
+            user.lifecycle_status = "beginner"
             user.profile_summary = conclusion
             admin_text = build_onboarding_admin_summary(user, assessments)
             session.summary = admin_text
@@ -555,11 +708,28 @@ async def handle_user_text(
             None,
         )
     if command == "/case":
+        if chat_type in {"group", "supergroup"}:
+            case = await get_random_case(db)
+            discussion = await create_case_discussion(db, user=user, chat_id=chat_id, case=case)
+            return (
+                format_discussion_prompt(discussion),
+                "case_discussion_opened",
+                0,
+                discussion_join_reply_markup(discussion.id),
+            )
         case = await get_random_case(db)
         session.state = f"case:{case.id}:1"
         return format_case(case), "case_prompt", 0, None
     if command == "/news":
         item = await get_or_create_news_case(db)
+        if chat_type in {"group", "supergroup"}:
+            discussion = await create_news_discussion(db, user=user, chat_id=chat_id, item=item)
+            return (
+                format_discussion_prompt(discussion),
+                "news_discussion_opened",
+                0,
+                discussion_join_reply_markup(discussion.id),
+            )
         session.state = f"news:{item.id}:1"
         return (
             "Sentinel Mode\n\n"
@@ -591,19 +761,59 @@ async def handle_user_text(
             f"ID: {battle.id}\n"
             f"Режим: {location}\n\n"
             f"Тема: {battle.topic}\n\n"
-            "Второй участник входит командой /joinbattle. После обмена аргументами "
-            "завершите командой /finishbattle. Ставка: 1 псикоин.",
-            "battle_waiting",
+            "Выберите уровень участия. Победитель получит возврат своего взноса "
+            "и такую же награду от системы.\n\n"
+            "Если кнопки не появились, отправьте: /battlefee 10",
+            "battle_configuring",
             0,
-            None,
+            battle_fee_reply_markup(battle.id),
+        )
+    if command == "/battlefee":
+        parts = clean.split(maxsplit=1)
+        if len(parts) < 2 or not parts[1].strip().isdigit():
+            return "Выберите уровень: /battlefee 1-100", "battle_fee_help", 0, None
+        battle = await get_latest_battle(
+            db,
+            chat_id=chat_id,
+            statuses={"configuring"},
+            created_by_user_id=user.id,
+        )
+        if battle is None:
+            return "У вас нет баттла, ожидающего выбора уровня. Запустите /battle.", "battle_missing", 0, None
+        ok, message = await choose_battle_entry_fee(
+            db,
+            battle=battle,
+            user=user,
+            entry_fee=int(parts[1].strip()),
+        )
+        return (
+            message,
+            "battle_waiting" if ok else "battle_fee_rejected",
+            0,
+            battle_join_reply_markup(battle.id) if ok else None,
         )
     if command == "/joinbattle":
-        _, message = await join_waiting_battle(db, user=user, chat_id=chat_id)
-        return message, "battle_join", 0, None
+        battle, message = await join_waiting_battle(db, user=user, chat_id=chat_id)
+        return (
+            message,
+            "battle_join",
+            0,
+            battle_finish_reply_markup(battle.id) if battle is not None and battle.status == "active" else None,
+        )
     if command == "/finishbattle":
         _, message, token_delta = await finish_active_battle(db, chat_id=chat_id)
         return message, "battle_finished", token_delta, None
+    if command in {"/finishdiscussion", "/finishcase", "/finishnews"}:
+        _, message, token_delta = await finish_discussion(db, chat_id=chat_id)
+        return message, "discussion_finished", token_delta, None
     if command == "/shop":
+        if user.lifecycle_status == "newbie" and not is_admin(user):
+            return (
+                "Ты здесь слишком рано. Ты еще не готов. Оракул ожидает тебя в чате.",
+                "shop_locked",
+                0,
+                None,
+            )
         return (
             await format_shop(db, user)
             + "\n\nВеб-витрина для теста: "
@@ -706,8 +916,16 @@ async def handle_user_text(
         active_battle = await get_latest_battle(db, chat_id=chat_id, statuses={"active"})
         if active_battle is not None:
             return "Аргумент зафиксирован для текущего баттла.", "battle_argument", 0, None
+        active_discussion = await get_latest_discussion(
+            db,
+            chat_id=chat_id,
+            statuses={"active"},
+        )
+        if active_discussion is not None:
+            return "Вклад зафиксирован для текущего обсуждения.", "discussion_argument", 0, None
         return (
-            "В группе я реагирую на команды: /battle, /joinbattle, /finishbattle, /news, /case.",
+            "В группе я реагирую на команды: /battle, /joinbattle, /finishbattle, "
+            "/news, /case, /finishdiscussion.",
             "group_idle",
             0,
             None,

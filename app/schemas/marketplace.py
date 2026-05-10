@@ -31,11 +31,15 @@ class MarketplacePurchaseRead(BaseModel):
 
 class MarketplaceState(BaseModel):
     telegram_id: int
+    lifecycle_status: str
     token_balance: int
     status: str
     subjectivity_score: int
     profile_summary: str | None
     currency_icon_url: str
+    psycoin_per_star: int
+    psycoin_withdraw_min: int
+    star_exchange_enabled: bool
     items: list[MarketplaceItemRead]
     purchases: list[MarketplacePurchaseRead]
 
@@ -50,3 +54,20 @@ class BuyResponse(BaseModel):
     ok: bool
     message: str
     token_balance: int
+
+
+class StarTopUpRequest(BaseModel):
+    telegram_id: int
+    star_amount: int
+
+
+class StarWithdrawalRequestCreate(BaseModel):
+    telegram_id: int
+    token_amount: int
+
+
+class StarExchangeResponse(BaseModel):
+    ok: bool
+    message: str
+    token_balance: int
+    star_amount: int | None = None
