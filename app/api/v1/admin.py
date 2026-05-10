@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
-from app.services.summaries import get_unsent_summaries, mark_summary_sent
+from app.services.summaries import claim_unsent_summaries, mark_summary_sent
 
 router = APIRouter()
 
@@ -25,7 +25,7 @@ class DueSummariesOut(BaseModel):
 
 @router.get("/due-summaries", response_model=DueSummariesOut)
 async def due_summaries(db: AsyncSession = Depends(get_db)) -> DueSummariesOut:
-    summaries = await get_unsent_summaries(db)
+    summaries = await claim_unsent_summaries(db)
     await db.commit()
     return DueSummariesOut(
         generated_at=datetime.now(UTC),

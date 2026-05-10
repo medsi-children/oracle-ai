@@ -114,6 +114,16 @@ async def get_unsent_summaries(db: AsyncSession) -> list[Summary]:
     return list(result.scalars().all())
 
 
+async def claim_unsent_summaries(db: AsyncSession) -> list[Summary]:
+    summaries = await get_unsent_summaries(db)
+    claimed_at = datetime.now(UTC)
+    for summary in summaries:
+        summary.is_sent = True
+        summary.sent_at = claimed_at
+    await db.flush()
+    return summaries
+
+
 async def mark_summary_sent(db: AsyncSession, summary_id: UUID) -> None:
     result = await db.execute(select(Summary).where(Summary.id == summary_id))
     summary = result.scalar_one_or_none()
