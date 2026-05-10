@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.marketplace import MarketplaceItem, MarketplacePurchase
 from app.models.token import TokenLedgerEntry
 from app.models.user import User
-from app.services.llm import openrouter_chat
+from app.services.llm import clean_generated_text, openrouter_chat
 
 PSYCOIN_ICON_URL = "/static/shop/psycoin.png"
 WISDOM_SPHERE_PRICES = [20, 40, 80, 150, 300, 600, 999]
@@ -76,7 +76,8 @@ SEED_ITEMS = [
         "title": "💎 Бриллиантовое Сердце",
         "description": (
             "Делает своего владельца абсолютно прозрачным.\n"
-            "Награда за честность, открытость, преданность принципам и отсутствие двойных стандартов."
+            "Награда за честность, открытость, преданность принципам "
+            "и отсутствие двойных стандартов."
         ),
         "price_tokens": 999,
         "item_type": "collectible",
@@ -317,13 +318,20 @@ async def build_wisdom_recommendation(user: User, *, level: int, price_tokens: i
         ),
     ]
     try:
-        return await openrouter_chat(
+        recommendation = await openrouter_chat(
             [
                 {
                     "role": "system",
                     "content": (
                         "Ты — Оракул ETHOS. Пиши на русском, на «ты», эстетично и точно. "
                         "Не ставь диагнозов, не раскрывай скрытые метрики и не упоминай алгоритм. "
+                        "Используй слово «субъектность» и его падежные формы. "
+                        "Никогда не используй слово «субъективность» и его падежные формы. "
+                        "Формат: только plain text, без Markdown, без HTML, без символов * и **. "
+                        "Делай короткие смысловые блоки через пустую строку. "
+                        "Не склеивай заголовки, абзацы и нумерованные пункты. "
+                        "Если используешь список, каждый пункт начинай с новой строки "
+                        "в формате «1. Текст», с пробелом после точки. "
                         "Нужно дать личную рекомендацию на основе психологического портрета, "
                         "тестирования, кейсов и наблюдения за поведением пользователя. "
                         f"{detail_rules[min(level, len(detail_rules) - 1)]}"
@@ -346,8 +354,9 @@ async def build_wisdom_recommendation(user: User, *, level: int, price_tokens: i
             temperature=0.45,
             max_tokens=900,
         )
+        return clean_generated_text(recommendation, split_sections=True)
     except Exception:
-        return fallback_recommendation(user, level)
+        return clean_generated_text(fallback_recommendation(user, level), split_sections=True)
 
 
 async def purchase_item(

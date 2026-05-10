@@ -6,7 +6,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.assessment import Assessment
 from app.models.token import TokenLedgerEntry
 from app.models.user import User
-from app.services.llm import ASSESSMENT_SYSTEM_PROMPT, extract_json_object, openrouter_chat
+from app.services.llm import (
+    ASSESSMENT_SYSTEM_PROMPT,
+    clean_generated_text,
+    extract_json_object,
+    openrouter_chat,
+)
 
 
 def calculate_status(score: int, token_balance: int) -> str:
@@ -222,11 +227,12 @@ async def score_text_with_oracle(
         )
         ethos_avg = round(((integrity + awareness + courage) / 3) * 10)
         token_delta = calculate_psycoin_award(round((avg * 0.7) + (ethos_avg * 0.3)))
-        summary = str(raw.get("summary") or "Ответ оценен Оракулом ИИ.")
+        summary = clean_generated_text(str(raw.get("summary") or "Ответ оценен Оракулом ИИ."))
         growth_hint = raw.get("growth_hint")
         if growth_hint:
-            summary = f"{summary}\n\nЗона роста: {growth_hint}"
-        next_probe = str(raw.get("next_probe") or "").strip()
+            clean_hint = clean_generated_text(str(growth_hint))
+            summary = f"{summary}\n\nЗона роста: {clean_hint}"
+        next_probe = clean_generated_text(str(raw.get("next_probe") or "")).strip()
         return AssessmentResult(
             subjectivity=subjectivity,
             honesty=honesty,

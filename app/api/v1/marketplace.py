@@ -17,6 +17,7 @@ from app.schemas.marketplace import (
     StarWithdrawalRequestCreate,
 )
 from app.services.admins import is_admin
+from app.services.llm import clean_generated_text
 from app.services.marketplace import (
     PSYCOIN_ICON_URL,
     get_item_image_url,
@@ -72,7 +73,9 @@ async def marketplace_state(
         token_balance=user.token_balance,
         status=user.status,
         subjectivity_score=user.subjectivity_score,
-        profile_summary=user.profile_summary,
+        profile_summary=(
+            clean_generated_text(user.profile_summary) if user.profile_summary else None
+        ),
         currency_icon_url=PSYCOIN_ICON_URL,
         psycoin_per_star=settings.psycoin_per_star,
         psycoin_withdraw_min=settings.psycoin_withdraw_min,
