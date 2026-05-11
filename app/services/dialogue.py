@@ -504,7 +504,8 @@ async def handle_user_text(
     chat_type: str | None = None,
 ) -> tuple[str, str, int, InlineKeyboardMarkup | None]:
     clean = text.strip()
-    command = normalize_command_token(clean.split(maxsplit=1)[0])
+    token = clean.split(maxsplit=1)[0] if clean else ""
+    command = normalize_command_token(token)
     admin_user = is_admin(user)
 
     if admin_user:
@@ -545,6 +546,14 @@ async def handle_user_text(
                 0,
                 None,
             )
+
+    if session.state.startswith("onboarding:case:") and command.startswith("/") and command != "/help":
+        return (
+            "Вы сейчас проходите входную проверку ETHOS. Завершите текущий кейс и только потом используйте другие команды.",
+            "onboarding_in_progress",
+            0,
+            None,
+        )
 
     if (
         user.lifecycle_status == "newbie"
