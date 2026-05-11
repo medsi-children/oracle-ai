@@ -12,6 +12,7 @@ from app.services.dialogue import (
     get_active_session,
     handle_user_text,
 )
+from app.services.stars import answer_pre_checkout_query, process_successful_star_payment
 from app.services.users import get_or_create_user
 
 router = APIRouter()
@@ -19,6 +20,46 @@ router = APIRouter()
 
 @router.post("/webhook", response_model=MessageResponse)
 async def telegram_webhook(update: dict[str, Any], db: AsyncSession = Depends(get_db)) -> MessageResponse:
+    pre_checkout_query = update.get("pre_checkout_query") or {}
+    if pre_checkout_query:
+        sender = pre_checkout_query.get("from") or {}
+        telegram_id = sender.get("id")
+        if telegram_id is None:
+            raise HTTPException(status_code=400, detail="Pre-checkout query without sender")
+        user = await get_or_create_user(
+            db,
+            UserCreate(
+                telegram_id=int(telegram_id),
+                username=sender.get("username"),
+                first_name=sender.get("first_name"),
+            ),
+        )
+        session = await get_active_session(db, user, source="telegram")
+        ok, error = await answer_pre_checkout_query(
+            db,
+            pre_checkout_query=pre_checkout_query,
+        )
+        await add_message(
+            db,
+            user=user,
+            session=session,
+            role="user",
+            content=f"stars_pre_checkout:{pre_checkout_query.get('invoice_payload')}",
+            metadata={
+                "telegram_update_id": update.get("update_id"),
+                "pre_checkout_query_id": pre_checkout_query.get("id"),
+            },
+        )
+        await db.commit()
+        return MessageResponse(
+            user_id=user.id,
+            session_id=session.id,
+            reply="" if ok else error,
+            mode="stars_pre_checkout",
+            subjectivity_score=user.subjectivity_score,
+            suppress_reply=ok,
+        )
+
     callback_query = update.get("callback_query") or {}
     message = update.get("message") or callback_query.get("message") or {}
     chat = message.get("chat") or {}
@@ -27,10 +68,10 @@ async def telegram_webhook(update: dict[str, Any], db: AsyncSession = Depends(ge
     telegram_id = sender.get("id")
     chat_id = chat.get("id")
 
-    if telegram_id is None or not text:
+    if telegram_id is None:
         raise HTTPException(
             status_code=400,
-            detail="Only text messages and callback buttons are supported in MVP",
+            detail="Telegram sender is missing",
         )
 
     user = await get_or_create_user(
@@ -42,6 +83,42 @@ async def telegram_webhook(update: dict[str, Any], db: AsyncSession = Depends(ge
         ),
     )
     session = await get_active_session(db, user, source="telegram")
+
+    successful_payment = message.get("successful_payment") or {}
+    if successful_payment:
+        await add_message(
+            db,
+            user=user,
+            session=session,
+            role="user",
+            content=f"stars_successful_payment:{successful_payment.get('invoice_payload')}",
+            metadata={
+                "telegram_update_id": update.get("update_id"),
+                "chat_id": chat_id,
+                "chat_type": chat.get("type"),
+                "successful_payment": successful_payment,
+            },
+        )
+        reply = await process_successful_star_payment(
+            db,
+            user=user,
+            successful_payment=successful_payment,
+        )
+        await add_message(db, user=user, session=session, role="assistant", content=reply)
+        await db.commit()
+        return MessageResponse(
+            user_id=user.id,
+            session_id=session.id,
+            reply=reply,
+            mode="stars_successful_payment",
+            subjectivity_score=user.subjectivity_score,
+        )
+
+    if not text:
+        raise HTTPException(
+            status_code=400,
+            detail="Only text messages, payments and callback buttons are supported",
+        )
     await add_message(
         db,
         user=user,

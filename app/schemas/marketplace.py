@@ -40,6 +40,8 @@ class MarketplaceState(BaseModel):
     subjectivity_score: int
     profile_summary: str | None
     currency_icon_url: str
+    closed_group_invite_url: str
+    system_entry_star_price: int
     psycoin_per_star: int
     psycoin_withdraw_min: int
     star_exchange_enabled: bool
@@ -77,3 +79,6 @@ class StarExchangeResponse(BaseModel):
     message: str
     token_balance: int
     star_amount: int | None = None
+    token_amount: int | None = None
+    invoice_url: str | None = None
+    withdrawal_id: UUID | None = None

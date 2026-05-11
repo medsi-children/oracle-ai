@@ -1,127 +1,29 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
-from app.models.message import Message
-from app.models.session import ConversationSession
 from app.models.summary import Summary
-from app.models.user import User
-from app.services.admins import admin_ids, is_admin
-from app.services.llm import openrouter_chat
 
 
-async def build_session_summary(db: AsyncSession, session: ConversationSession, user: User) -> str:
-    result = await db.execute(
-        select(Message)
-        .where(Message.session_id == session.id)
-        .order_by(Message.created_at.asc())
-        .limit(60)
-    )
-    messages = result.scalars().all()
-    transcript = "\n".join(
-        f"{'Пациент' if m.role == 'user' else 'Оракул'}: {m.content}" for m in messages
-    )
-    fallback = (
-        "Summary беседы\n"
-        f"Пользователь: @{user.username or 'без username'}\n"
-        f"chat_id: {user.telegram_id}\n\n"
-        "Кратко: пользователь взаимодействовал с Оракулом ИИ. "
-        "Подробный AI-summary временно недоступен."
-    )
-    if not transcript.strip():
-        return fallback
-    try:
-        return await openrouter_chat(
-            [
-                {
-                    "role": "system",
-                    "content": (
-                        "Составь краткое summary беседы для администратора/специалиста. "
-                        "Русский язык. 4-7 пунктов: состояние, темы, риски без диагнозов, "
-                        "динамика, что стоит уточнить. Не выдумывай факты."
-                    ),
-                },
-                {"role": "user", "content": transcript},
-            ],
-            temperature=0.2,
-            max_tokens=700,
-        )
-    except Exception:
-        return fallback + "\n\nФрагмент:\n" + transcript[:1200]
-
-
-async def create_due_summaries(db: AsyncSession, *, older_than_minutes: int = 60) -> list[Summary]:
-    threshold = datetime.now(UTC) - timedelta(minutes=older_than_minutes)
-    result = await db.execute(
-        select(ConversationSession, User)
-        .join(User, User.id == ConversationSession.user_id)
-        .where(
-            ConversationSession.state != "closed",
-            ConversationSession.last_message_at.is_not(None),
-            ConversationSession.last_message_at < threshold,
-            ConversationSession.summary.is_(None),
-        )
-        .limit(20)
-    )
-    created: list[Summary] = []
-    for session, user in result.all():
-        if is_admin(user):
-            session.summary = "Admin session skipped."
-            session.state = "closed"
-            continue
-        text = await build_session_summary(db, session, user)
-        session.summary = text
-        session.state = "closed"
-        summary = Summary(
-            session_id=session.id,
-            user_id=user.id,
-            chat_id=user.telegram_id,
-            username=user.username,
-            text=text,
-        )
-        db.add(summary)
-        created.append(summary)
-    await db.flush()
-    return created
+async def create_due_summaries(
+    db: AsyncSession, *, older_than_minutes: int = 60
+) -> list[Summary]:
+    _ = (db, older_than_minutes)
+    return []
 
 
 async def get_unsent_summaries(db: AsyncSession) -> list[Summary]:
-    await create_due_summaries(db)
-    ids = admin_ids()
-    admin_username = settings.admin_telegram_username.lower()
-
-    admin_filters = [
-        func.lower(func.coalesce(User.username, "")) != admin_username,
-    ]
-    if ids:
-        admin_filters.append(or_(User.telegram_id.is_(None), User.telegram_id.not_in(ids)))
-
-    result = await db.execute(
-        select(Summary)
-        .join(User, User.id == Summary.user_id)
-        .where(
-            Summary.is_sent.is_(False),
-            *admin_filters,
-        )
-        .order_by(Summary.created_at.asc())
-        .limit(20)
-    )
-    return list(result.scalars().all())
+    _ = db
+    return []
 
 
 async def claim_unsent_summaries(db: AsyncSession) -> list[Summary]:
-    summaries = await get_unsent_summaries(db)
-    claimed_at = datetime.now(UTC)
-    for summary in summaries:
-        summary.is_sent = True
-        summary.sent_at = claimed_at
-    await db.flush()
-    return summaries
+    _ = db
+    return []
 
 
 async def mark_summary_sent(db: AsyncSession, summary_id: UUID) -> None:

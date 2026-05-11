@@ -757,6 +757,81 @@ async def shop_app() -> str:
     body.locked .locked-view {
       display: grid;
     }
+    .entry-view {
+      min-height: 100vh;
+      display: none;
+      place-items: center;
+      padding:
+        max(34px, calc(env(safe-area-inset-top, 0px) + 28px))
+        18px
+        28px;
+      text-align: center;
+      position: relative;
+      z-index: 2;
+    }
+    body.entry main {
+      display: none;
+    }
+    body.entry .entry-view {
+      display: grid;
+    }
+    .entry-shell {
+      width: min(100%, 540px);
+      display: grid;
+      gap: 22px;
+      justify-items: center;
+    }
+    .entry-image-wrap {
+      width: min(72vw, 340px);
+      aspect-ratio: 1 / 1;
+      display: grid;
+      place-items: center;
+      border-radius: 999px;
+      background:
+        radial-gradient(circle, rgba(255, 184, 202, .18), rgba(255, 184, 202, 0) 64%);
+      animation: aura 3.6s ease-in-out infinite;
+    }
+    .entry-image {
+      width: min(62vw, 260px);
+      aspect-ratio: 1 / 1;
+      object-fit: cover;
+      border-radius: 30px;
+      border: 1px solid rgba(255, 214, 228, .22);
+      box-shadow:
+        0 0 0 0 rgba(255, 184, 202, .26),
+        0 24px 60px rgba(0, 0, 0, .34);
+      animation: spherePulse 2.6s ease-in-out infinite;
+    }
+    .entry-title {
+      margin: 0;
+      font-size: clamp(34px, 9vw, 64px);
+      line-height: .95;
+    }
+    .entry-price {
+      color: var(--coin);
+      font-weight: 800;
+      font-size: 24px;
+    }
+    .entry-status {
+      min-height: 24px;
+      color: var(--text-soft);
+      line-height: 1.45;
+      white-space: pre-wrap;
+    }
+    .entry-actions {
+      width: min(100%, 420px);
+      display: grid;
+      gap: 10px;
+    }
+    .entry-link {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+    }
+    .entry-link.visible {
+      display: inline-flex;
+    }
     @media (max-width: 840px) {
       header {
         grid-template-columns: minmax(0, 1fr) auto;
@@ -818,6 +893,27 @@ async def shop_app() -> str:
 <body>
   <div class="locked-view" id="lockedView">
     Ты здесь слишком рано. Ты еще не готов. Оракул ожидает тебя в чате
+  </div>
+  <div class="entry-view" id="entryView">
+    <div class="entry-shell">
+      <div class="entry-image-wrap">
+        <img
+          class="entry-image loading-image"
+          id="entryImage"
+          src="/static/shop/items/custom-battle-topic.png"
+          alt="ETHOS"
+        />
+      </div>
+      <h1 class="entry-title">ETHOS</h1>
+      <div class="entry-price" id="entryPrice">...</div>
+      <div class="entry-actions">
+        <button class="buy" id="entryButton" type="button">Войти в систему</button>
+        <a class="buy entry-link" id="entryJoinLink" href="#" target="_blank" rel="noreferrer">
+          Перейти в закрытый чат
+        </a>
+      </div>
+      <div class="entry-status" id="entryStatus"></div>
+    </div>
   </div>
   <main>
     <header>
@@ -888,7 +984,7 @@ async def shop_app() -> str:
             <button class="buy icon-buy" id="topUpStarsButton" type="button" aria-label="Купить PsyCoin за звезды">+</button>
             <button class="buy" id="withdrawStarsButton" type="button">⭐ Вывести в звезды</button>
           </div>
-          <div class="dev-card" id="balanceDevCard">В разработке...</div>
+          <div class="dev-card" id="balanceDevCard"></div>
         </div>
       </div>
     </section>
@@ -941,6 +1037,12 @@ async def shop_app() -> str:
     const balanceButton = document.getElementById('balanceButton');
     const balance = document.getElementById('balance');
     const lockedView = document.getElementById('lockedView');
+    const entryView = document.getElementById('entryView');
+    const entryImage = document.getElementById('entryImage');
+    const entryPrice = document.getElementById('entryPrice');
+    const entryButton = document.getElementById('entryButton');
+    const entryJoinLink = document.getElementById('entryJoinLink');
+    const entryStatus = document.getElementById('entryStatus');
     const profileStatus = document.getElementById('profileStatus');
     const profileScore = document.getElementById('profileScore');
     const profileBalance = document.getElementById('profileBalance');
@@ -966,6 +1068,7 @@ async def shop_app() -> str:
     const purchaseText = document.getElementById('purchaseText');
     const purchaseProfileButton = document.getElementById('purchaseProfileButton');
     const purchaseCloseButton = document.getElementById('purchaseCloseButton');
+    let currentState = null;
 
     const statusLabels = {
       object: 'Объект',
@@ -1049,12 +1152,25 @@ async def shop_app() -> str:
 
     function showLocked() {
       document.body.classList.add('locked');
+      document.body.classList.remove('entry');
       lockedView.textContent = 'Ты здесь слишком рано. Ты еще не готов. Оракул ожидает тебя в чате';
     }
 
-    function showDevelopmentCard() {
+    function showEntry(data) {
+      currentState = data;
+      document.body.classList.add('entry');
+      document.body.classList.remove('locked');
+      entryPrice.textContent = `Вход: ${data.system_entry_star_price} ⭐`;
+      entryButton.textContent = `Войти за ${data.system_entry_star_price} ⭐`;
+      entryJoinLink.href = data.closed_group_invite_url || '#';
+      entryJoinLink.classList.remove('visible');
+      entryStatus.textContent = 'Проверка пройдена. Остался вход в закрытый контур.';
+      hydrateImages(entryView);
+    }
+
+    function showBalanceCard(html) {
       balanceDevCard.classList.add('visible');
-      balanceDevCard.textContent = 'В разработке...';
+      balanceDevCard.innerHTML = html;
     }
 
     function showPurchaseOverlay(title, text) {
@@ -1067,6 +1183,186 @@ async def shop_app() -> str:
       purchaseOverlay.classList.remove('visible');
     }
 
+    async function fetchState() {
+      const res = await fetch(
+        `/api/v1/marketplace/state?telegram_id=${encodeURIComponent(telegramId)}`
+      );
+      if (res.status === 403) {
+        showLocked();
+        return null;
+      }
+      if (!res.ok) {
+        notice.textContent = 'Пользователь не найден. Сначала напишите боту /start.';
+        return null;
+      }
+      return await res.json();
+    }
+
+    function openInvoice(invoiceUrl, onPaid) {
+      if (!invoiceUrl) {
+        throw new Error('invoice_url is empty');
+      }
+      if (tg?.openInvoice) {
+        tg.openInvoice(invoiceUrl, status => {
+          if (status === 'paid') onPaid?.();
+          if (status === 'failed') notice.textContent = 'Оплата не прошла. Попробуйте еще раз.';
+        });
+        return;
+      }
+      window.open(invoiceUrl, '_blank', 'noopener,noreferrer');
+      notice.textContent = 'Счет открыт в новом окне. После оплаты обновите магазин.';
+    }
+
+    async function waitForFollower() {
+      entryStatus.textContent = 'Оплата принята. Подтверждаю вход...';
+      for (let attempt = 0; attempt < 12; attempt += 1) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        const data = await fetchState();
+        if (data?.lifecycle_status === 'follower') {
+          currentState = data;
+          entryStatus.textContent = 'Вход подтвержден. Закрытый чат открыт.';
+          entryJoinLink.href = data.closed_group_invite_url;
+          entryJoinLink.classList.add('visible');
+          if (data.closed_group_invite_url && tg?.openTelegramLink) {
+            tg.openTelegramLink(data.closed_group_invite_url);
+          }
+          return;
+        }
+      }
+      entryStatus.textContent = 'Оплата прошла. Если кнопка чата не появилась, закройте и снова откройте ETHOS через синюю кнопку.';
+    }
+
+    async function startSystemEntryPayment() {
+      if (!telegramId) return;
+      entryStatus.textContent = 'Готовлю счет Telegram Stars...';
+      entryButton.disabled = true;
+      try {
+        const res = await fetch('/api/v1/marketplace/stars/system-entry', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            telegram_id: Number(telegramId),
+            star_amount: currentState?.system_entry_star_price || 50
+          })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          entryStatus.textContent = data.message || data.detail || 'Не удалось создать счет.';
+          return;
+        }
+        if (!data.invoice_url) {
+          entryStatus.textContent = data.message || 'Вход уже открыт.';
+          await load();
+          return;
+        }
+        entryStatus.textContent = data.message;
+        openInvoice(data.invoice_url, waitForFollower);
+      } catch (error) {
+        entryStatus.textContent = 'Не удалось открыть оплату. Проверьте связь и попробуйте еще раз.';
+      } finally {
+        entryButton.disabled = false;
+      }
+    }
+
+    async function refreshAfterPayment() {
+      for (let attempt = 0; attempt < 10; attempt += 1) {
+        await new Promise(resolve => setTimeout(resolve, 900));
+        const data = await fetchState();
+        if (data && data.token_balance !== currentState?.token_balance) {
+          await load();
+          notice.textContent = 'PsyCoin зачислены.';
+          return;
+        }
+      }
+      await load();
+    }
+
+    async function buyStarsTopUp(starAmount) {
+      notice.textContent = '';
+      showBalanceCard('Готовлю счет Telegram Stars...');
+      try {
+        const res = await fetch('/api/v1/marketplace/stars/topup', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            telegram_id: Number(telegramId),
+            star_amount: starAmount
+          })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          showBalanceCard(escapeHTML(data.message || data.detail || 'Не удалось создать счет.'));
+          return;
+        }
+        showBalanceCard(escapeHTML(data.message));
+        openInvoice(data.invoice_url, refreshAfterPayment);
+      } catch (error) {
+        showBalanceCard('Не удалось открыть счет. Проверьте связь и попробуйте еще раз.');
+      }
+    }
+
+    function renderTopUpCard() {
+      const rate = currentState?.psycoin_per_star || 5;
+      const packages = [50, 100, 200, 500];
+      showBalanceCard(`
+        <div style="display:grid;gap:12px;text-align:left">
+          <strong>Обмен Stars на PsyCoin</strong>
+          <span>Курс: 1 ⭐ = ${escapeHTML(rate)} PsyCoin</span>
+          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">
+            ${packages.map(stars => `
+              <button class="buy" type="button" data-stars="${stars}">
+                ${stars} ⭐ → ${stars * rate} PsyCoin
+              </button>
+            `).join('')}
+          </div>
+        </div>
+      `);
+      balanceDevCard.querySelectorAll('[data-stars]').forEach(button => {
+        button.addEventListener('click', () => buyStarsTopUp(Number(button.dataset.stars)));
+      });
+    }
+
+    async function submitWithdrawal() {
+      const tokenAmount = currentState?.psycoin_withdraw_min || 1000;
+      showBalanceCard('Отправляю заявку администратору...');
+      try {
+        const res = await fetch('/api/v1/marketplace/stars/withdraw', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            telegram_id: Number(telegramId),
+            token_amount: tokenAmount
+          })
+        });
+        const data = await res.json();
+        const message = data.message || data.detail || 'Заявка обработана.';
+        await load();
+        openPanel('balancePanel');
+        showBalanceCard(escapeHTML(message));
+      } catch (error) {
+        showBalanceCard('Не удалось отправить заявку. Проверьте связь и попробуйте еще раз.');
+      }
+    }
+
+    function renderWithdrawCard() {
+      const min = currentState?.psycoin_withdraw_min || 1000;
+      const rate = currentState?.psycoin_per_star || 5;
+      const stars = Math.floor(min / rate);
+      const enough = (currentState?.token_balance || 0) >= min;
+      showBalanceCard(`
+        <div style="display:grid;gap:12px;text-align:left">
+          <strong>Вывод PsyCoin в Stars</strong>
+          <span>Минимум: ${escapeHTML(min)} PsyCoin = ${escapeHTML(stars)} ⭐</span>
+          <span>Заявка уйдет администратору. PsyCoin будут списаны и зарезервированы под ручную выплату.</span>
+          <button class="buy" type="button" id="submitWithdrawalButton" ${enough ? '' : 'disabled'}>
+            ${enough ? 'Подать заявку' : 'Недостаточно PsyCoin'}
+          </button>
+        </div>
+      `);
+      const button = document.getElementById('submitWithdrawalButton');
+      button?.addEventListener('click', submitWithdrawal);
+    }
+
     async function load() {
       if (!telegramId) {
         notice.textContent = 'Откройте магазин из Telegram или передайте telegram_id в ссылке.';
@@ -1074,19 +1370,15 @@ async def shop_app() -> str:
       }
 
       notice.textContent = '';
-      const res = await fetch(
-        `/api/v1/marketplace/state?telegram_id=${encodeURIComponent(telegramId)}`
-      );
-      if (res.status === 403) {
-        showLocked();
+      document.body.classList.remove('locked');
+      document.body.classList.remove('entry');
+      const data = await fetchState();
+      if (!data) return;
+      currentState = data;
+      if (data.lifecycle_status === 'beginner') {
+        showEntry(data);
         return;
       }
-      if (!res.ok) {
-        notice.textContent = 'Пользователь не найден. Сначала напишите боту /start.';
-        return;
-      }
-
-      const data = await res.json();
       const collectibles = data.items.filter(item => item.item_type === 'collectible');
       const wisdom = data.items.find(item => item.item_type === 'wisdom_sphere');
       const premium = data.items.find(item => item.item_type.startsWith('privilege_'));
@@ -1101,6 +1393,8 @@ async def shop_app() -> str:
       walletCoinImage.classList.add('loading-image');
       walletCoinImage.classList.remove('image-ready');
       walletAmount.textContent = data.token_balance;
+      balanceDevCard.classList.remove('visible');
+      balanceDevCard.innerHTML = '';
       profileStatus.textContent = statusLabels[data.status] || data.status;
       profileScore.textContent = `${data.subjectivity_score}/100`;
       profileBalance.innerHTML = coinMarkup(
@@ -1252,8 +1546,9 @@ async def shop_app() -> str:
       openPanel('profilePanel');
     });
 
-    withdrawStarsButton.addEventListener('click', showDevelopmentCard);
-    topUpStarsButton.addEventListener('click', showDevelopmentCard);
+    entryButton.addEventListener('click', startSystemEntryPayment);
+    withdrawStarsButton.addEventListener('click', renderWithdrawCard);
+    topUpStarsButton.addEventListener('click', renderTopUpCard);
     purchaseProfileButton.addEventListener('click', () => {
       hidePurchaseOverlay();
       openPanel('profilePanel');

@@ -11,7 +11,6 @@ from app.models.case import Case
 from app.models.message import Message
 from app.models.news import NewsItem
 from app.models.session import ConversationSession
-from app.models.summary import Summary
 from app.models.user import User
 from app.schemas.message import ChatAnimationStep, InlineKeyboardButton, InlineKeyboardMarkup
 from app.services.admin_tools import (
@@ -44,7 +43,8 @@ from app.services.group_discussions import (
 from app.services.llm import SUPPORT_SYSTEM_PROMPT, openrouter_chat
 from app.services.marketplace import buy_item, format_shop, user_owns_item_type
 from app.services.news import create_custom_news_case, get_or_create_news_case
-from app.services.summaries import create_due_summaries
+
+ONBOARDING_CASE_COUNT = 7
 
 
 async def get_active_session(
@@ -157,7 +157,9 @@ def format_first_contact() -> str:
         "Здесь действует Закон ETHOS: каждый ответ вернется к тебе в виде будущего рейтинга. "
         "Здесь не получится быть «правильным», можно быть только настоящим. "
         "Попытка солгать мне или самому себе будет зафиксирована как когнитивная слабость.\n\n"
-        "Ты готов начать переход из состояния Объекта в статус Субъекта?"
+        "Сейчас вас ждет проверка из 7 вопросов, чтобы оценить вашу субъектность. "
+        "Пройдите ее до конца и получите уникальный шанс стать частью нашей команды.\n\n"
+        "Вы готовы начать переход из состояния Объекта в статус Субъекта?"
     )
 
 
@@ -179,7 +181,7 @@ def first_contact_reply_markup() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text="Я готов", callback_data="onboarding:ready"),
+                InlineKeyboardButton(text="Начать проверку", callback_data="onboarding:ready"),
                 InlineKeyboardButton(text="Мне нужно время", callback_data="onboarding:later"),
             ]
         ]
@@ -295,7 +297,7 @@ async def has_custom_topic_privilege(db: AsyncSession, user: User) -> bool:
 
 def format_onboarding_case(case: Case, step: int) -> str:
     return (
-        "Испытание ETHOS\n\n"
+        f"Испытание ETHOS {step}/{ONBOARDING_CASE_COUNT}\n\n"
         f"{case.prompt}\n\n"
         "Ответь коротко и честно: что ты сделаешь, почему именно так, "
         "и что в этом выборе для тебя самое неудобное?"
@@ -398,12 +400,11 @@ async def build_onboarding_conclusion(
         for index, assessment in enumerate(assessments, start=1)
     )
     fallback = (
-        "Проверка завершена.\n\n"
+        "Проверка завершена. Добро пожаловать в систему ETHOS.\n\n"
         "Первичный контур виден: как вы выбираете под давлением, где защищаете образ себя, "
         "а где способны признать неудобный мотив. Этого достаточно, чтобы продолжить путь.\n\n"
-        "Вы прошли проверку. Следующий шаг — приглашение в закрытый чат; оно придет после "
-        "ручного подтверждения администратором.\n\n"
-        "Пока ожидаете, можете говорить с Оракулом здесь. Без лести. Без шума. По существу."
+        "Вы прошли проверку. Нажимайте на синюю кнопку возле поля отправки сообщений "
+        "и следуйте указаниям. Ждем вас в системе ETHOS!"
     )
     try:
         conclusion = await openrouter_chat(
@@ -411,11 +412,12 @@ async def build_onboarding_conclusion(
                 {
                     "role": "system",
                     "content": (
-                        "Ты Оракул ETHOS. На основе трех первичных оценок дай пользователю "
+                        "Ты Оракул ETHOS. На основе семи первичных оценок дай пользователю "
                         "краткий, прямой и эстетичный вывод. Без диагнозов. Нужно: 1) что "
                         "видно по человеку, 2) зона роста, 3) спокойная фраза о прохождении "
-                        "проверки и ожидании ручного приглашения в закрытый чат. "
-                        "Без повторов. Обращение на 'вы'."
+                        "проверки. Не обещай ручной контакт администратора. В финале обязательно "
+                        "скажи: нажимайте на синюю кнопку возле поля отправки сообщений и следуйте "
+                        "указаниям. Ждем вас в системе ETHOS! Без повторов. Обращение на 'вы'."
                     ),
                 },
                 {
@@ -434,42 +436,12 @@ async def build_onboarding_conclusion(
         return fallback
 
     required_tail = (
-        "\n\nВы прошли проверку. Следующий шаг — ручное приглашение в закрытый чат. "
-        "Пока ожидаете, можете говорить с Оракулом здесь."
+        "\n\nВы прошли проверку. Нажимайте на синюю кнопку возле поля отправки сообщений "
+        "и следуйте указаниям. Ждем вас в системе ETHOS!"
     )
-    if "прошли проверку" not in conclusion.lower():
+    if "синюю кнопку" not in conclusion.lower():
         conclusion = conclusion.rstrip() + required_tail
     return conclusion
-
-
-def build_onboarding_admin_summary(user: User, assessments: list[Assessment]) -> str:
-    lines = [
-        "Кандидат прошел первичное тестирование ETHOS до конца.",
-        "",
-        f"Пользователь: @{user.username or 'без username'}",
-        f"telegram_id: {user.telegram_id or 'n/a'}",
-        f"Индекс субъектности: {user.subjectivity_score}/100",
-        f"Статус: {user.status}",
-        f"Баланс: {user.token_balance} PsyCoin",
-        "",
-        "Готов к приглашению в закрытый чат, если администратор подтверждает вручную.",
-        "",
-        "Краткий профиль:",
-    ]
-    for index, assessment in enumerate(assessments, start=1):
-        lines.extend(
-            [
-                "",
-                f"Кейс {index}:",
-                f"- субъектность: {assessment.subjectivity}/100",
-                f"- честность: {assessment.honesty}/100",
-                f"- эмоциональный суверенитет: {assessment.emotional_sovereignty}/100",
-                f"- когнитивное смирение: {assessment.cognitive_humility}/100",
-                f"- эмпатия: {assessment.empathy}/100",
-                f"- вывод: {assessment.summary[:700]}",
-            ]
-        )
-    return "\n".join(lines)
 
 
 async def handle_user_text(
@@ -489,7 +461,7 @@ async def handle_user_text(
         if session.state != "active":
             session.state = "active"
         if command == "/start":
-            return format_admin_help(), "admin_start", 0, None
+            return format_admin_help(success_prefix=False), "admin_start", 0, None
         admin_reply = await handle_admin_tool_command(db, user, clean)
         if admin_reply is not None:
             return admin_reply, "admin_command", 0, None
@@ -623,6 +595,24 @@ async def handle_user_text(
         return message, "discussion_finished", token_delta, None
 
     if command == "/start":
+        if user.lifecycle_status == "beginner" and not admin_user:
+            return (
+                "Проверка уже пройдена.\n\n"
+                "Нажмите синюю кнопку возле поля отправки сообщений, откройте ETHOS "
+                f"и войдите в систему за {settings.system_entry_star_price} ⭐.",
+                "onboarding_already_completed",
+                0,
+                None,
+            )
+        if user.lifecycle_status == "follower" and not admin_user:
+            return (
+                "Вы уже в системе ETHOS.\n\n"
+                "Откройте синюю кнопку возле поля отправки сообщений, чтобы перейти в магазин, "
+                "профиль и баланс.",
+                "system_ready",
+                0,
+                None,
+            )
         session.state = "onboarding:consent"
         user.status = user.status or "object"
         return format_first_contact(), "onboarding_start", 0, first_contact_reply_markup()
@@ -676,22 +666,11 @@ async def handle_user_text(
             implicit_signals=implicit,
         )
         assessments = await get_onboarding_assessments(db, session)
-        if len(assessments) >= 3:
+        if len(assessments) >= ONBOARDING_CASE_COUNT:
             session.state = "active"
             conclusion = await build_onboarding_conclusion(db, user=user, assessments=assessments)
             user.lifecycle_status = "beginner"
             user.profile_summary = conclusion
-            admin_text = build_onboarding_admin_summary(user, assessments)
-            session.summary = admin_text
-            db.add(
-                Summary(
-                    session_id=session.id,
-                    user_id=user.id,
-                    chat_id=user.telegram_id,
-                    username=user.username,
-                    text=admin_text,
-                )
-            )
             return conclusion, "onboarding_completed", token_delta, None
 
         next_step = len(assessments) + 1
@@ -710,28 +689,6 @@ async def handle_user_text(
         return format_profile(user), "profile", 0, None
     if command == "/reset":
         return "Эта команда доступна только администратору.", "forbidden", 0, None
-    if command in {"/summary", "/summaries"}:
-        if not is_admin(user):
-            return "Эта команда доступна только администратору.", "forbidden", 0, None
-        summaries = await create_due_summaries(db, older_than_minutes=60)
-        if not summaries:
-            return (
-                format_admin_success("Новых завершенных бесед для summary пока нет."),
-                "admin_summary_empty",
-                0,
-                None,
-            )
-        return (
-            format_admin_success(
-                "Созданы новые summary:\n\n"
-                + "\n\n".join(
-                    f"@{s.username or 'без username'}\n{s.text[:1200]}" for s in summaries[:5]
-                )
-            ),
-            "admin_summary",
-            0,
-            None,
-        )
     if command == "/case":
         parts = clean.split(maxsplit=1)
         topic = parts[1].strip() if len(parts) > 1 else None
@@ -856,6 +813,14 @@ async def handle_user_text(
                 0,
                 None,
             )
+        if user.lifecycle_status == "beginner" and not is_admin(user):
+            return (
+                "Проверка пройдена. Теперь открой синюю кнопку возле поля отправки сообщений "
+                f"и нажми «Войти в систему». Вход в закрытый контур стоит {settings.system_entry_star_price} ⭐.",
+                "shop_entry_required",
+                0,
+                None,
+            )
         return (
             await format_shop(db, user)
             + "\n\nВеб-витрина для теста: "
@@ -866,6 +831,13 @@ async def handle_user_text(
             None,
         )
     if command == "/buy":
+        if user.lifecycle_status != "follower" and not is_admin(user):
+            return (
+                "Покупки откроются после входа в систему ETHOS через синюю кнопку mini-app.",
+                "buy_locked",
+                0,
+                None,
+            )
         parts = clean.split(maxsplit=1)
         if len(parts) < 2 or not parts[1].strip().isdigit():
             return "Напишите номер предмета, например: /buy 1", "buy_help", 0, None

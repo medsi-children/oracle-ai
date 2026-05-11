@@ -29,9 +29,11 @@ ADMIN_COMMANDS = [
     {"command": "grant", "description": "Изменить баланс PsyCoin"},
     {"command": "setscore", "description": "Задать индекс субъектности"},
     {"command": "setstatus", "description": "Задать статус"},
+    {"command": "setlifecycle", "description": "Задать этап доступа"},
     {"command": "close", "description": "Закрыть активные сессии"},
     {"command": "shoplink", "description": "Ссылка на mini-app магазина"},
-    {"command": "summary", "description": "Создать summary"},
+    {"command": "withdrawals", "description": "Заявки на вывод Stars"},
+    {"command": "withdrawdone", "description": "Отметить вывод Stars"},
     {"command": "synccommands", "description": "Обновить меню команд"},
 ]
 
@@ -44,7 +46,8 @@ async def sync_telegram_bot_commands() -> str:
             "Добавьте токен бота в Railway и повторите /synccommands."
         )
 
-    url = f"https://api.telegram.org/bot{token}/setMyCommands"
+    commands_url = f"https://api.telegram.org/bot{token}/setMyCommands"
+    menu_url = f"https://api.telegram.org/bot{token}/setChatMenuButton"
     payloads = [
         {
             "commands": PRIVATE_COMMANDS,
@@ -69,16 +72,34 @@ async def sync_telegram_bot_commands() -> str:
 
     async with httpx.AsyncClient(timeout=12) as client:
         for payload in payloads:
-            response = await client.post(url, json=payload)
+            response = await client.post(commands_url, json=payload)
             data = response.json()
             if response.status_code >= 400 or not data.get("ok"):
                 description = data.get("description") or response.text
                 return f"Telegram не принял меню команд: {description}"
+        menu_status = "Mini-app кнопка не обновлялась: PUBLIC_WEBAPP_URL должен быть HTTPS."
+        if settings.public_webapp_url.startswith("https://"):
+            response = await client.post(
+                menu_url,
+                json={
+                    "menu_button": {
+                        "type": "web_app",
+                        "text": "ETHOS",
+                        "web_app": {"url": settings.public_webapp_url},
+                    }
+                },
+            )
+            data = response.json()
+            if response.status_code >= 400 or not data.get("ok"):
+                description = data.get("description") or response.text
+                return f"Telegram не принял mini-app кнопку: {description}"
+            menu_status = "Mini-app кнопка ETHOS обновлена."
 
     return (
         "Меню команд Telegram обновлено.\n\n"
         "Личные чаты: только /start.\n"
         "Группы: /battle, /battlefee, /joinbattle, /finishbattle, /case, /news, "
         "/finishdiscussion.\n"
-        "Админ: полный набор команд."
+        "Админ: полный набор команд.\n"
+        f"{menu_status}"
     )

@@ -9,9 +9,12 @@ from app.models.session import ConversationSession
 from app.models.token import TokenLedgerEntry
 from app.models.user import User
 from app.services.admin_reset import find_user_for_reset, reset_user_profile
+from app.services.assessment import calculate_status
+from app.services.stars import display_user, list_pending_withdrawals, mark_withdrawal_done
 from app.services.telegram_menu import sync_telegram_bot_commands
 
 VALID_STATUSES = {"object", "seeker", "faithful", "keeper", "sighted", "subject"}
+VALID_LIFECYCLE_STATUSES = {"newbie", "beginner", "follower"}
 ADMIN_SUCCESS = "Команда успешно выполнена!"
 ADMIN_ERROR = "Команда не выполнена."
 
@@ -24,8 +27,8 @@ def format_admin_error(text: str) -> str:
     return f"{ADMIN_ERROR}\n\n{text}"
 
 
-def format_admin_help() -> str:
-    return format_admin_success(
+def format_admin_help(*, success_prefix: bool = True) -> str:
+    text = (
         "Админ-панель ETHOS\n\n"
         "/admin — показать эти команды\n"
         "/users [число] — последние пользователи\n"
@@ -35,13 +38,14 @@ def format_admin_help() -> str:
         "/addcoins @username 10 причина — начислить PsyCoin\n"
         "/setscore @username 50 — задать индекс субъектности\n"
         "/setstatus @username object — задать статус вручную\n"
+        "/setlifecycle @username follower — задать этап доступа\n"
         "/close @username — закрыть активные сессии пользователя\n"
         "/shoplink @username — ссылка на mini-app магазина\n"
-        "/summary — создать summary по завершенным диалогам\n\n"
-        "/synccommands — обновить меню команд Telegram\n\n"
-        "Админский чат не проходит onboarding, не получает ETHOS-тесты и не попадает "
-        "в рассылки/summary."
+        "/withdrawals — pending-заявки на вывод Stars\n"
+        "/withdrawdone id — отметить заявку выплаченной\n"
+        "/synccommands — обновить меню команд Telegram"
     )
+    return format_admin_success(text) if success_prefix else text
 
 
 def user_label(user: User) -> str:
@@ -138,7 +142,7 @@ async def reset_command(db: AsyncSession, clean: str, *, admin: User) -> str:
     await reset_user_profile(db, target)
     return format_admin_success(
         f"Профиль {label} полностью обнулен.\n\n"
-        "Удалены история, сессии, оценки, summary, покупки и ledger псикоинов. "
+        "Удалены история, сессии, оценки, покупки, заявки Stars и ledger псикоинов. "
         "Внутренний статус: newbie. Статус: Объект. Баланс: 0."
     )
 
@@ -158,6 +162,7 @@ async def grant_command(db: AsyncSession, clean: str) -> str:
 
     reason = parts[3].strip() if len(parts) > 3 else "Admin balance adjustment"
     target.token_balance = max(0, target.token_balance + amount)
+    target.status = calculate_status(target.subjectivity_score, target.token_balance)
     db.add(
         TokenLedgerEntry(
             user_id=target.id,
@@ -199,6 +204,25 @@ async def setstatus_command(db: AsyncSession, clean: str) -> str:
     return format_admin_success(f"Статус {user_label(target)} установлен: {status}.")
 
 
+async def setlifecycle_command(db: AsyncSession, clean: str) -> str:
+    parts = clean.split(maxsplit=2)
+    if len(parts) < 3:
+        return format_admin_error("Формат: /setlifecycle @username follower")
+    target = await find_user_for_reset(db, parts[1])
+    if target is None:
+        return format_admin_error("Пользователь не найден.")
+    lifecycle_status = parts[2].strip().lower()
+    if lifecycle_status not in VALID_LIFECYCLE_STATUSES:
+        return format_admin_error(
+            "Внутренний статус должен быть одним из: "
+            + ", ".join(sorted(VALID_LIFECYCLE_STATUSES))
+        )
+    target.lifecycle_status = lifecycle_status
+    return format_admin_success(
+        f"Внутренний статус {user_label(target)} установлен: {lifecycle_status}."
+    )
+
+
 async def close_sessions_command(db: AsyncSession, clean: str) -> str:
     target = await user_from_command(db, clean)
     if target is None:
@@ -223,6 +247,31 @@ async def shoplink_command(db: AsyncSession, clean: str) -> str:
     return format_admin_success(settings.public_webapp_url + f"?telegram_id={target.telegram_id}")
 
 
+async def withdrawals_command(db: AsyncSession) -> str:
+    rows = await list_pending_withdrawals(db)
+    if not rows:
+        return format_admin_success("Активных заявок на вывод Stars нет.")
+    lines = ["Заявки на вывод Stars:"]
+    for request, user in rows:
+        lines.append(
+            f"{request.id} | {display_user(user)} | "
+            f"{request.token_amount} PsyCoin = {request.star_amount} ⭐"
+        )
+    return format_admin_success("\n".join(lines))
+
+
+async def withdrawdone_command(db: AsyncSession, clean: str) -> str:
+    parts = clean.split(maxsplit=1)
+    if len(parts) < 2:
+        return format_admin_error("Формат: /withdrawdone id")
+    request = await mark_withdrawal_done(db, parts[1].strip())
+    if request is None:
+        return format_admin_error("Заявка не найдена.")
+    return format_admin_success(
+        f"Заявка {request.id} отмечена как выплаченная: {request.star_amount} ⭐."
+    )
+
+
 async def handle_admin_tool_command(db: AsyncSession, admin: User, clean: str) -> str | None:
     command = clean.split(maxsplit=1)[0].lower()
     if command.startswith("/") and "@" in command:
@@ -241,10 +290,16 @@ async def handle_admin_tool_command(db: AsyncSession, admin: User, clean: str) -
         return await setscore_command(db, clean)
     if command == "/setstatus":
         return await setstatus_command(db, clean)
+    if command == "/setlifecycle":
+        return await setlifecycle_command(db, clean)
     if command == "/close":
         return await close_sessions_command(db, clean)
     if command == "/shoplink":
         return await shoplink_command(db, clean)
+    if command == "/withdrawals":
+        return await withdrawals_command(db)
+    if command == "/withdrawdone":
+        return await withdrawdone_command(db, clean)
     if command == "/synccommands":
         result = await sync_telegram_bot_commands()
         if result.startswith("Меню команд Telegram обновлено."):

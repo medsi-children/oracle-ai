@@ -16,10 +16,11 @@ class Settings(BaseSettings):
     admin_telegram_username: str = "medsi_children"
     admin_telegram_ids: str = "7659888703"
     public_webapp_url: str = "http://localhost:8000/app/shop"
-    closed_group_invite_url: str = ""
-    psycoin_per_star: int = 20
+    closed_group_invite_url: str = "https://t.me/+jkSp6Vx8L35kYmRi"
+    system_entry_star_price: int = 50
+    psycoin_per_star: int = 5
     psycoin_withdraw_min: int = 1000
-    star_exchange_enabled: bool = False
+    star_exchange_enabled: bool = True
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

@@ -13,7 +13,8 @@ class MessageCreate(BaseModel):
 
 class InlineKeyboardButton(BaseModel):
     text: str
-    callback_data: str
+    callback_data: str | None = None
+    url: str | None = None
 
 
 class InlineKeyboardMarkup(BaseModel):
@@ -35,6 +36,7 @@ class MessageResponse(BaseModel):
     subjectivity_score: int | None = None
     reply_markup: InlineKeyboardMarkup | None = None
     intro_animation: list[ChatAnimationStep] | None = None
+    suppress_reply: bool = False
 
     @computed_field
     @property
