@@ -19,7 +19,12 @@ from app.services.admin_tools import (
     handle_admin_tool_command,
 )
 from app.services.admins import is_admin
-from app.services.assessment import analyze_implicit_signals, create_assessment
+from app.services.assessment import (
+    analyze_implicit_signals,
+    calculate_onboarding_initial_score,
+    calculate_status,
+    create_assessment,
+)
 from app.services.battles import (
     BATTLE_ENTRY_OPTIONS,
     choose_battle_entry_fee,
@@ -40,7 +45,7 @@ from app.services.group_discussions import (
     get_latest_discussion,
     join_discussion,
 )
-from app.services.llm import SUPPORT_SYSTEM_PROMPT, openrouter_chat
+from app.services.llm import SUPPORT_SYSTEM_PROMPT, clean_generated_text, openrouter_chat
 from app.services.marketplace import buy_item, format_shop, user_owns_item_type
 from app.services.news import create_custom_news_case, get_or_create_news_case
 
@@ -417,7 +422,9 @@ async def build_onboarding_conclusion(
                         "видно по человеку, 2) зона роста, 3) спокойная фраза о прохождении "
                         "проверки. Не обещай ручной контакт администратора. В финале обязательно "
                         "скажи: нажимайте на синюю кнопку возле поля отправки сообщений и следуйте "
-                        "указаниям. Ждем вас в системе ETHOS! Без повторов. Обращение на 'вы'."
+                        "указаниям. Ждем вас в системе ETHOS! Без повторов. Обращение на 'вы'. "
+                        "Не называй индекс финальной истиной и не пиши, что человек достиг потолка: "
+                        "это стартовая калибровка, дальше рост идет через баттлы и обсуждения."
                     ),
                 },
                 {
@@ -441,7 +448,7 @@ async def build_onboarding_conclusion(
     )
     if "синюю кнопку" not in conclusion.lower():
         conclusion = conclusion.rstrip() + required_tail
-    return conclusion
+    return clean_generated_text(conclusion, split_sections=True)
 
 
 async def handle_user_text(
@@ -668,6 +675,8 @@ async def handle_user_text(
         assessments = await get_onboarding_assessments(db, session)
         if len(assessments) >= ONBOARDING_CASE_COUNT:
             session.state = "active"
+            user.subjectivity_score = calculate_onboarding_initial_score(assessments)
+            user.status = calculate_status(user.subjectivity_score, user.token_balance)
             conclusion = await build_onboarding_conclusion(db, user=user, assessments=assessments)
             user.lifecycle_status = "beginner"
             user.profile_summary = conclusion

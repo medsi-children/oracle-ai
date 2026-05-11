@@ -13,6 +13,8 @@ from app.services.llm import (
     openrouter_chat,
 )
 
+ONBOARDING_INITIAL_SCORE_CAP = 72
+
 
 def calculate_status(score: int, token_balance: int) -> str:
     if score >= 85 and token_balance >= 80:
@@ -70,6 +72,32 @@ def calculate_psycoin_award(score_100: int) -> int:
     if score_10 >= 9:
         return 7
     return max(1, min(5, round(score_10 - 4)))
+
+
+def assessment_average_score(assessment: Assessment) -> int:
+    return round(
+        (
+            assessment.subjectivity
+            + assessment.honesty
+            + assessment.emotional_sovereignty
+            + assessment.cognitive_humility
+            + assessment.empathy
+        )
+        / 5
+    )
+
+
+def calibrate_onboarding_initial_score(raw_score: int) -> int:
+    return clamp(raw_score, maximum=ONBOARDING_INITIAL_SCORE_CAP)
+
+
+def calculate_onboarding_initial_score(assessments: list[Assessment]) -> int:
+    if not assessments:
+        return 0
+    raw_score = round(
+        sum(assessment_average_score(assessment) for assessment in assessments) / len(assessments)
+    )
+    return calibrate_onboarding_initial_score(raw_score)
 
 
 def analyze_implicit_signals(text: str, *, latency_seconds: float | None = None) -> dict:

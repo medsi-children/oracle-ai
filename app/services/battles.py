@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -7,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.battle import Battle, BattleParticipant
+from app.models.marketplace import MarketplaceItem, MarketplacePurchase
 from app.models.message import Message
 from app.models.token import TokenLedgerEntry
 from app.models.user import User
@@ -14,14 +16,116 @@ from app.services.assessment import calculate_status, score_text_locally
 from app.services.llm import extract_json_object, openrouter_chat
 
 BATTLE_ENTRY_OPTIONS = [1, 3, 5, 10, 50, 100]
+COLLECTIBLE_BATTLE_BUFFS = {
+    "✨ Искра Осознания": 3,
+    "🔥 Пламя Безмятежности": 5,
+    "🪞 Зеркало Искренности": 8,
+    "Знак Искренности": 8,
+    "💍 Серебряный Перстень": 11,
+    "🦊 Золотой Лис": 14,
+    "💎 Бриллиантовое Сердце": 18,
+}
 DEFAULT_BATTLE_TOPIC = (
     "Разберите спорный кейс так, чтобы не победить любой ценой, а сохранить достоинство, "
     "точность аргументации и способность слышать другого."
 )
 
 
+@dataclass(frozen=True)
+class BattleItemBuff:
+    item_title: str | None = None
+    percent: int = 0
+
+
+@dataclass(frozen=True)
+class BattleScoreBreakdown:
+    base_score: int
+    buff: BattleItemBuff
+    bonus_points: int
+    final_score: int
+
+
 def user_public_name(user: User) -> str:
     return f"@{user.username}" if user.username else user.first_name or str(user.telegram_id)
+
+
+def clamp_score(score: int) -> int:
+    return max(0, min(100, int(score)))
+
+
+def collectible_battle_buff_percent(item: MarketplaceItem) -> int:
+    if item.item_type != "collectible":
+        return 0
+    return COLLECTIBLE_BATTLE_BUFFS.get(item.title, 0)
+
+
+def apply_collectible_battle_buff(
+    base_score: int, buff: BattleItemBuff
+) -> BattleScoreBreakdown:
+    base_score = clamp_score(base_score)
+    if buff.percent <= 0:
+        return BattleScoreBreakdown(
+            base_score=base_score,
+            buff=BattleItemBuff(),
+            bonus_points=0,
+            final_score=base_score,
+        )
+    bonus_points = int((base_score * buff.percent / 100) + 0.5)
+    final_score = min(100, base_score + bonus_points)
+    return BattleScoreBreakdown(
+        base_score=base_score,
+        buff=buff,
+        bonus_points=final_score - base_score,
+        final_score=final_score,
+    )
+
+
+async def get_collectible_battle_buffs(
+    db: AsyncSession, user_ids: list[UUID]
+) -> dict[UUID, BattleItemBuff]:
+    if not user_ids:
+        return {}
+    result = await db.execute(
+        select(MarketplacePurchase.user_id, MarketplaceItem)
+        .join(MarketplaceItem, MarketplaceItem.id == MarketplacePurchase.item_id)
+        .where(
+            MarketplacePurchase.user_id.in_(user_ids),
+            MarketplaceItem.item_type == "collectible",
+            MarketplaceItem.is_active.is_(True),
+        )
+    )
+    buffs: dict[UUID, BattleItemBuff] = {user_id: BattleItemBuff() for user_id in user_ids}
+    for user_id, item in result.all():
+        percent = collectible_battle_buff_percent(item)
+        current = buffs.get(user_id, BattleItemBuff())
+        if percent > current.percent:
+            buffs[user_id] = BattleItemBuff(item_title=item.title, percent=percent)
+    return buffs
+
+
+def format_score_breakdown(name: str, breakdown: BattleScoreBreakdown) -> str:
+    if breakdown.bonus_points <= 0:
+        return f"{name}: {breakdown.base_score}/100"
+    return (
+        f"{name}: {breakdown.base_score} + {breakdown.bonus_points} "
+        f"за трофей «{breakdown.buff.item_title}» "
+        f"(+{breakdown.buff.percent}%) = {breakdown.final_score}/100"
+    )
+
+
+def choose_battle_winner_id(
+    user_ids: list[UUID],
+    score_breakdowns: dict[UUID, BattleScoreBreakdown],
+    oracle_winner_id: UUID | None,
+) -> UUID:
+    return max(
+        user_ids,
+        key=lambda user_id: (
+            score_breakdowns[user_id].final_score,
+            score_breakdowns[user_id].base_score,
+            1 if user_id == oracle_winner_id else 0,
+        ),
+    )
 
 
 async def generate_battle_topic() -> str:
@@ -139,6 +243,8 @@ def format_battle_waiting_message(battle: Battle) -> str:
         f"Тема: {battle.topic}\n\n"
         f"Уровень участия: {battle.entry_fee} псикоинов.\n"
         "Победитель получает возврат взноса и такую же награду от системы.\n\n"
+        "Коллекционные трофеи дают мягкий бафф к оценке: применяется самый сильный, "
+        "максимум +18%.\n\n"
         "Нужен второй участник."
     )
 
@@ -201,7 +307,8 @@ async def join_waiting_battle(
         "Баттл начат.\n\n"
         f"Тема: {battle.topic}\n\n"
         f"Уровень участия: {entry_fee} псикоинов.\n"
-        "Пишите аргументы прямо в чат. Когда позиции раскрыты, завершите баттл.",
+        "Пишите аргументы прямо в чат. Когда позиции раскрыты, завершите баттл.\n\n"
+        "Если у участника есть коллекционный трофей, Оракул покажет его бафф в финальном счете.",
     )
 
 
@@ -357,19 +464,26 @@ async def finish_active_battle(
     )
 
     rows_by_user = {user.id: (participant, user) for participant, user in participant_rows}
-    try:
-        winner_id = UUID(str(verdict["winner_user_id"]))
-    except (TypeError, ValueError):
-        winner_id = None
-    if winner_id not in rows_by_user:
-        winner_id = max(
-            (user.id for _, user in participant_rows),
-            key=lambda user_id: int(verdict["scores"].get(str(user_id), 0)),
+    buffs_by_user = await get_collectible_battle_buffs(db, user_ids)
+    score_breakdowns: dict[UUID, BattleScoreBreakdown] = {}
+    for _participant, user in participant_rows:
+        base_score = clamp_score(int(verdict["scores"].get(str(user.id), 0)))
+        score_breakdowns[user.id] = apply_collectible_battle_buff(
+            base_score,
+            buffs_by_user.get(user.id, BattleItemBuff()),
         )
+
+    try:
+        oracle_winner_id = UUID(str(verdict["winner_user_id"]))
+    except (TypeError, ValueError):
+        oracle_winner_id = None
+    winner_id = choose_battle_winner_id(user_ids, score_breakdowns, oracle_winner_id)
     winner_participant, winner = rows_by_user[winner_id]
 
     for participant, user in participant_rows:
-        score = int(verdict["scores"].get(str(user.id), 0))
+        score = score_breakdowns[user.id].base_score
+        # В БД храним базовую оценку навыка: трофеи влияют на исход баттла,
+        # но не на индекс субъектности.
         participant.score = score
         previous = user.subjectivity_score
         user.subjectivity_score = round((previous * 0.7) + (score * 0.3))
@@ -402,8 +516,8 @@ async def finish_active_battle(
         f"{verdict['summary']}\n\n"
         "Оценки:\n"
         + "\n".join(
-            f"{user_public_name(user)}: {participant.score}/100"
-            for participant, user in participant_rows
+            format_score_breakdown(user_public_name(user), score_breakdowns[user.id])
+            for _participant, user in participant_rows
         )
     )
     return battle, reply, winner_gain
