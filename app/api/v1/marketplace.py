@@ -277,8 +277,10 @@ async def stars_withdraw(
     return StarExchangeResponse(
         ok=True,
         message=(
-            "Заявка на вывод отправлена администратору.\n\n"
-            f"{request.token_amount} PsyCoin = {request.star_amount} ⭐"
+            "Ваша заявка зарегистрирована.\n\n"
+            f"{request.token_amount} PsyCoin зарезервированы для вывода в звезды.\n"
+            f"Сумма к выплате: {request.star_amount} ⭐\n\n"
+            "Администратор получил уведомление и обработает вывод вручную."
         ),
         token_balance=user.token_balance,
         star_amount=request.star_amount,

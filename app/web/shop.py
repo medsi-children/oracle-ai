@@ -1353,7 +1353,7 @@ async def shop_app() -> str:
         <div style="display:grid;gap:12px;text-align:left">
           <strong>Вывод PsyCoin в Stars</strong>
           <span>Минимум: ${escapeHTML(min)} PsyCoin = ${escapeHTML(stars)} ⭐</span>
-          <span>Заявка уйдет администратору. PsyCoin будут списаны и зарезервированы под ручную выплату.</span>
+          <span>После подачи заявки PsyCoin будут зарезервированы для вывода в звезды.</span>
           <button class="buy" type="button" id="submitWithdrawalButton" ${enough ? '' : 'disabled'}>
             ${enough ? 'Подать заявку' : 'Недостаточно PsyCoin'}
           </button>
