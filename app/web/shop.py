@@ -1205,12 +1205,12 @@ async def shop_app() -> str:
       document.body.classList.add('entry');
       document.body.classList.remove('locked');
       entryPrice.textContent = `${data.system_entry_star_price} ⭐️`;
-      entryButton.textContent = `Войти в систему`;
+      entryButton.textContent = `Вход ${data.system_entry_star_price} ⭐️`;
       entryJoinLink.href = data.closed_group_invite_url || '#';
       entryJoinLink.classList.remove('visible');
       entryStatus.textContent = 'Проверка пройдена. Последний шаг - вход в закрытый контур системы. Вы готовы?';
       // Update entry title
-      const entryTitle = document.querySelector('.entry-view h2') || document.querySelector('.entry-view h3');
+      const entryTitle = document.querySelector('.entry-view .entry-title');
       if (entryTitle) {
         entryTitle.textContent = 'Вход в систему';
       }
