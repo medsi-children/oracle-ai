@@ -18,7 +18,7 @@ from app.services.telegram_delivery import (
 from app.services.telegram_menu import sync_telegram_bot_commands
 
 VALID_STATUSES = {"object", "seeker", "faithful", "keeper", "sighted", "subject"}
-VALID_LIFECYCLE_STATUSES = {"newbie", "beginner", "follower"}
+VALID_LIFECYCLE_STATUSES = {"newbie", "beginner", "follower", "admin"}
 ADMIN_SUCCESS = "Команда успешно выполнена!"
 ADMIN_ERROR = "Команда не выполнена."
 

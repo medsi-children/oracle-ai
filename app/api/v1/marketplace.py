@@ -44,12 +44,16 @@ async def get_user_by_telegram_id(db: AsyncSession, telegram_id: int) -> User:
 
 
 def ensure_marketplace_access(user: User) -> None:
+    if user.lifecycle_status == "admin":
+        return
     if user.lifecycle_status == "newbie" and not is_admin(user):
         raise HTTPException(status_code=403, detail="shop_locked_newbie")
 
 
 def ensure_full_marketplace_access(user: User) -> None:
     ensure_marketplace_access(user)
+    if user.lifecycle_status == "admin":
+        return
     if user.lifecycle_status != "follower" and not is_admin(user):
         raise HTTPException(status_code=403, detail="shop_locked_system_entry")
 

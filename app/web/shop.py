@@ -1175,15 +1175,45 @@ async def shop_app() -> str:
       lockedView.textContent = 'Ты здесь слишком рано. Ты еще не готов. Оракул ожидает тебя в чате';
     }
 
+    function showAdminPanel() {
+      document.body.classList.add('locked');
+      const title = document.createElement('h2');
+      title.textContent = 'Админ-панель ETHOS';
+      const panel = document.createElement('div');
+      panel.className = 'admin-panel';
+      panel.innerHTML = `
+        <p style="font-size: 14px; line-height: 1.6; color: #aaa;">
+          Основные команды доступны в личном чате через /admin.<br><br>
+          <strong>/addcoins</strong> - Начислить псикоины<br>
+          <strong>/grant</strong> - Управлять балансом<br>
+          <strong>/setscore</strong> - Индекс субъектности<br>
+          <strong>/setlifecycle</strong> - Этап доступа<br>
+          <strong>/users</strong> - Список пользователей<br>
+          <strong>/withdrawals</strong> - Заявки на вывод<br><br>
+          Полный справочник: /admin help
+        </p>
+      `;
+      notice.innerHTML = '';
+      notice.appendChild(title);
+      notice.appendChild(panel);
+      itemsBox.style.display = 'none';
+      premiumBox.style.display = 'none';
+    }
+
     function showEntry(data) {
       currentState = data;
       document.body.classList.add('entry');
       document.body.classList.remove('locked');
-      entryPrice.textContent = `Вход: ${data.system_entry_star_price} ⭐`;
-      entryButton.textContent = `Войти за ${data.system_entry_star_price} ⭐`;
+      entryPrice.textContent = `${data.system_entry_star_price} ⭐️`;
+      entryButton.textContent = `Войти в систему`;
       entryJoinLink.href = data.closed_group_invite_url || '#';
       entryJoinLink.classList.remove('visible');
-      entryStatus.textContent = 'Проверка пройдена. Остался вход в закрытый контур.';
+      entryStatus.textContent = 'Проверка пройдена. Последний шаг - вход в закрытый контур системы. Вы готовы?';
+      // Update entry title
+      const entryTitle = document.querySelector('.entry-view h2') || document.querySelector('.entry-view h3');
+      if (entryTitle) {
+        entryTitle.textContent = 'Вход в систему';
+      }
       hydrateImages(entryView);
     }
 
@@ -1442,6 +1472,10 @@ async def shop_app() -> str:
       const data = await fetchState();
       if (!data) return;
       currentState = data;
+      if (data.lifecycle_status === 'admin') {
+        showAdminPanel();
+        return;
+      }
       if (data.lifecycle_status === 'beginner') {
         showEntry(data);
         return;
