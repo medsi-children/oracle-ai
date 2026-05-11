@@ -1,9 +1,11 @@
+import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.session import get_db
+from app.core.config import settings
+from app.db.session import AsyncSessionLocal, get_db
 from app.schemas.message import MessageResponse
 from app.schemas.user import UserCreate
 from app.services.dialogue import (
@@ -13,13 +15,14 @@ from app.services.dialogue import (
     handle_user_text,
 )
 from app.services.stars import answer_pre_checkout_query, process_successful_star_payment
+from app.services.telegram_delivery import answer_callback_query, send_telegram_response
 from app.services.users import get_or_create_user
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
-@router.post("/webhook", response_model=MessageResponse)
-async def telegram_webhook(update: dict[str, Any], db: AsyncSession = Depends(get_db)) -> MessageResponse:
+async def build_telegram_response(update: dict[str, Any], db: AsyncSession) -> MessageResponse:
     pre_checkout_query = update.get("pre_checkout_query") or {}
     if pre_checkout_query:
         sender = pre_checkout_query.get("from") or {}
@@ -157,3 +160,35 @@ async def telegram_webhook(update: dict[str, Any], db: AsyncSession = Depends(ge
         if mode == "onboarding_start"
         else None,
     )
+
+
+async def process_direct_telegram_update(update: dict[str, Any]) -> None:
+    async with AsyncSessionLocal() as db:
+        try:
+            await answer_callback_query(update)
+            response = await build_telegram_response(update, db)
+            await send_telegram_response(update, response, answer_callback=False)
+        except Exception:
+            await db.rollback()
+            logger.exception("Failed to process direct Telegram update")
+            raise
+
+
+@router.post("/webhook", response_model=MessageResponse)
+async def telegram_webhook(
+    update: dict[str, Any], db: AsyncSession = Depends(get_db)
+) -> MessageResponse:
+    return await build_telegram_response(update, db)
+
+
+@router.post("/direct-webhook")
+async def telegram_direct_webhook(
+    update: dict[str, Any],
+    background_tasks: BackgroundTasks,
+    request: Request,
+) -> dict[str, bool]:
+    secret = settings.telegram_webhook_secret_token.strip()
+    if secret and request.headers.get("X-Telegram-Bot-Api-Secret-Token") != secret:
+        raise HTTPException(status_code=403, detail="Invalid Telegram webhook secret")
+    background_tasks.add_task(process_direct_telegram_update, update)
+    return {"ok": True}

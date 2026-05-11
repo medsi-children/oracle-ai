@@ -122,7 +122,7 @@ async def join_discussion(
     if user.token_balance < entry_fee:
         return (
             False,
-            f"Для входа нужно {entry_fee} PsyCoin. Сейчас у вас {user.token_balance}.",
+            f"Для входа нужно {entry_fee} псикоинов. Сейчас у вас {user.token_balance}.",
         )
 
     user.token_balance -= entry_fee
@@ -144,7 +144,7 @@ async def join_discussion(
     await db.flush()
     return (
         True,
-        f"Участие принято: {entry_fee} PsyCoin.\n\n"
+        f"Участие принято: {entry_fee} псикоинов.\n\n"
         "Теперь напишите позицию прямо в чат. Оракул учтет только сообщения участников.",
     )
 
@@ -342,7 +342,7 @@ async def finish_discussion(
                 reason=f"PsyCoin discussion rank {rank} award: {discussion.id}",
             )
         )
-        winners.append(f"{rank}. {user_public_name(user)}: +{award} PsyCoin")
+        winners.append(f"{rank}. {user_public_name(user)}: +{award} псикоинов")
 
     for participant, user in participant_rows:
         participant.score = int(verdict["scores"].get(str(user.id), participant.score))

@@ -168,7 +168,7 @@ async def stars_topup(
     if not settings.star_exchange_enabled:
         return StarExchangeResponse(
             ok=False,
-            message="Обмен Stars временно отключен.",
+            message="Обмен звезд временно отключен.",
             token_balance=user.token_balance,
             star_amount=payload.star_amount,
         )
@@ -187,15 +187,18 @@ async def stars_topup(
             order_type="psycoin_topup",
             star_amount=payload.star_amount,
             token_amount=token_amount,
-            title="PsyCoin",
-            description=f"{token_amount} PsyCoin за {payload.star_amount} Telegram Stars",
+            title="Псикоины",
+            description=f"{token_amount} псикоинов за {payload.star_amount} звезд",
         )
     except TelegramStarsError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     await db.commit()
     return StarExchangeResponse(
         ok=True,
-        message=f"Откройте счет Telegram Stars: {payload.star_amount} ⭐ = {token_amount} PsyCoin.",
+        message=(
+            "Счет готов.\n\n"
+            f"{payload.star_amount} ⭐ = {token_amount} псикоинов"
+        ),
         token_balance=user.token_balance,
         star_amount=payload.star_amount,
         token_amount=token_amount,
@@ -220,7 +223,7 @@ async def stars_system_entry(
     if not settings.star_exchange_enabled:
         return StarExchangeResponse(
             ok=False,
-            message="Оплата Stars временно отключена.",
+            message="Оплата звездами временно отключена.",
             token_balance=user.token_balance,
             star_amount=settings.system_entry_star_price,
             token_amount=0,
@@ -241,7 +244,7 @@ async def stars_system_entry(
     await db.commit()
     return StarExchangeResponse(
         ok=True,
-        message=f"Откройте счет Telegram Stars: вход в систему за {star_amount} ⭐.",
+        message=f"Счет на вход готов: {star_amount} ⭐.",
         token_balance=user.token_balance,
         star_amount=star_amount,
         token_amount=0,
@@ -258,7 +261,7 @@ async def stars_withdraw(
     if not settings.star_exchange_enabled:
         return StarExchangeResponse(
             ok=False,
-            message="Вывод Stars временно отключен.",
+            message="Вывод в звезды временно отключен.",
             token_balance=user.token_balance,
         )
     try:
@@ -278,7 +281,7 @@ async def stars_withdraw(
         ok=True,
         message=(
             "Ваша заявка зарегистрирована.\n\n"
-            f"{request.token_amount} PsyCoin зарезервированы для вывода в звезды.\n"
+            f"{request.token_amount} псикоинов зарезервированы для вывода в звезды.\n"
             f"Сумма к выплате: {request.star_amount} ⭐\n\n"
             "Администратор получил уведомление и обработает вывод вручную."
         ),

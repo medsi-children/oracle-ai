@@ -102,11 +102,11 @@ async def choose_battle_entry_fee(
     if battle.created_by_user_id != user.id:
         return False, "Уровень баттла выбирает тот, кто его открыл."
     if entry_fee < 1 or entry_fee > 100:
-        return False, "Уровень баттла должен быть от 1 до 100 PsyCoin."
+        return False, "Уровень баттла должен быть от 1 до 100 псикоинов."
     if user.token_balance < entry_fee:
         return (
             False,
-            f"Для этого уровня нужно {entry_fee} PsyCoin. Сейчас у вас {user.token_balance}.",
+            f"Для этого уровня нужно {entry_fee} псикоинов. Сейчас у вас {user.token_balance}.",
         )
 
     user.token_balance -= entry_fee
@@ -137,7 +137,7 @@ def format_battle_waiting_message(battle: Battle) -> str:
     return (
         "Баттл настроен.\n\n"
         f"Тема: {battle.topic}\n\n"
-        f"Уровень участия: {battle.entry_fee} PsyCoin.\n"
+        f"Уровень участия: {battle.entry_fee} псикоинов.\n"
         "Победитель получает возврат взноса и такую же награду от системы.\n\n"
         "Нужен второй участник."
     )
@@ -173,7 +173,7 @@ async def join_waiting_battle(
     if user.token_balance < entry_fee:
         return (
             battle,
-            f"Для входа нужно {entry_fee} PsyCoin. Сейчас у вас {user.token_balance}.",
+            f"Для входа нужно {entry_fee} псикоинов. Сейчас у вас {user.token_balance}.",
         )
 
     user.token_balance -= entry_fee
@@ -200,7 +200,7 @@ async def join_waiting_battle(
         battle,
         "Баттл начат.\n\n"
         f"Тема: {battle.topic}\n\n"
-        f"Уровень участия: {entry_fee} PsyCoin.\n"
+        f"Уровень участия: {entry_fee} псикоинов.\n"
         "Пишите аргументы прямо в чат. Когда позиции раскрыты, завершите баттл.",
     )
 
@@ -397,8 +397,8 @@ async def finish_active_battle(
         "Баттл завершен.\n\n"
         f"Тема: {battle.topic}\n\n"
         f"Победитель: {user_public_name(winner)}\n"
-        f"Возврат взноса: {winner_return} PsyCoin\n"
-        f"Награда системы: {winner_reward} PsyCoin\n\n"
+        f"Возврат взноса: {winner_return} псикоинов\n"
+        f"Награда системы: {winner_reward} псикоинов\n\n"
         f"{verdict['summary']}\n\n"
         "Оценки:\n"
         + "\n".join(

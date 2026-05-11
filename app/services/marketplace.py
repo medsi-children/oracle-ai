@@ -387,7 +387,7 @@ async def build_wisdom_recommendation(user: User, *, level: int, price_tokens: i
                     "role": "user",
                     "content": (
                         f"Ступень Сферы Мудрости: {level + 1}\n"
-                        f"Стоимость: {price_tokens} PsyCoin\n"
+                        f"Стоимость: {price_tokens} псикоинов\n"
                         f"Статус: {user.status}\n"
                         f"Индекс субъектности: {user.subjectivity_score}/100\n"
                         "Психологический портрет: "

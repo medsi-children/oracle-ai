@@ -191,7 +191,7 @@ def first_contact_reply_markup() -> InlineKeyboardMarkup:
 def battle_fee_reply_markup(battle_id: UUID) -> InlineKeyboardMarkup:
     rows = [
         [
-            InlineKeyboardButton(text=f"{fee} PsyCoin", callback_data=f"bfee:{battle_id}:{fee}")
+            InlineKeyboardButton(text=f"{fee} псикоинов", callback_data=f"bfee:{battle_id}:{fee}")
             for fee in BATTLE_ENTRY_OPTIONS[index : index + 2]
         ]
         for index in range(0, len(BATTLE_ENTRY_OPTIONS), 2)
@@ -219,7 +219,7 @@ def battle_finish_reply_markup(battle_id: UUID) -> InlineKeyboardMarkup:
 def discussion_join_reply_markup(discussion_id: UUID) -> InlineKeyboardMarkup:
     rows = [
         [
-            InlineKeyboardButton(text=f"{fee} PsyCoin", callback_data=f"djoin:{discussion_id}:{fee}")
+            InlineKeyboardButton(text=f"{fee} псикоинов", callback_data=f"djoin:{discussion_id}:{fee}")
             for fee in DISCUSSION_ENTRY_OPTIONS[index : index + 2]
         ]
         for index in range(0, len(DISCUSSION_ENTRY_OPTIONS), 2)
@@ -340,7 +340,7 @@ def format_help() -> str:
         "/joinbattle — войти вторым участником\n"
         "/finishbattle — завершить баттл и выдать награду победителю\n"
         "/finishdiscussion — завершить групповой разбор кейса или новости\n"
-        "/shop — PsyCoin Shop\n"
+        "/shop — магазин псикоинов\n"
         "/buy 1 — купить предмет, привилегию или Сферу Мудрости\n"
         "/profile — посмотреть профиль и баланс\n"
         "/help — показать это меню"
@@ -498,7 +498,7 @@ async def handle_user_text(
 
     if clean.startswith("bfee_other:"):
         return (
-            "Отправьте уровень вручную: /battlefee 7. Допустимый диапазон: 1-100 PsyCoin.",
+            "Отправьте уровень вручную: /battlefee 7. Допустимый диапазон: 1-100 псикоинов.",
             "battle_fee_help",
             0,
             None,

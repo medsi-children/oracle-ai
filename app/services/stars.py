@@ -156,7 +156,7 @@ async def process_successful_star_payment(
     charge_id = successful_payment.get("telegram_payment_charge_id")
 
     if currency != "XTR" or not payload:
-        return "Оплата получена, но это не платеж Telegram Stars. Напишите администратору."
+        return "Оплата получена, но это не платеж звездами. Напишите администратору."
 
     result = await db.execute(
         select(StarPaymentOrder).where(StarPaymentOrder.invoice_payload == payload)
@@ -164,9 +164,9 @@ async def process_successful_star_payment(
     order = result.scalar_one_or_none()
     if order is None:
         await notify_admins(
-            "Получен платеж Stars без найденного заказа.\n\n"
+            "Получен платеж звездами без найденного заказа.\n\n"
             f"Пользователь: {display_user(user)}\n"
-            f"Stars: {total_amount}\n"
+            f"Звезды: {total_amount}\n"
             f"payload: {payload}"
         )
         return "Оплата получена, но заказ не найден. Администратор уже получил сигнал."
@@ -178,10 +178,10 @@ async def process_successful_star_payment(
         order.status = "failed"
         order.note = (order.note or "") + "\n\nПлатеж не совпал с пользователем или суммой."
         await notify_admins(
-            "Платеж Stars требует ручной проверки.\n\n"
+            "Платеж звездами требует ручной проверки.\n\n"
             f"Пользователь: {display_user(user)}\n"
             f"Order: {order.id}\n"
-            f"Stars: {total_amount}"
+            f"Звезды: {total_amount}"
         )
         return "Оплата требует ручной проверки. Администратор уже получил сигнал."
 
@@ -203,11 +203,11 @@ async def process_successful_star_payment(
 
     await db.flush()
     await notify_admins(
-        "Платеж Stars прошел успешно.\n\n"
+        "Платеж звездами прошел успешно.\n\n"
         f"Пользователь: {display_user(user)}\n"
         f"Тип: {order.order_type}\n"
-        f"Stars: {order.star_amount}\n"
-        f"PsyCoin: {order.token_amount}"
+        f"Звезды: {order.star_amount}\n"
+        f"Псикоины: {order.token_amount}"
     )
     return _paid_message(user, order)
 
@@ -222,11 +222,11 @@ def _paid_message(user: User, order: StarPaymentOrder) -> str:
         )
     if order.order_type == "psycoin_topup":
         return (
-            "PsyCoin зачислены.\n\n"
-            f"+{order.token_amount} PsyCoin за {order.star_amount} ⭐\n"
-            f"Текущий баланс: {user.token_balance} PsyCoin."
+            "Псикоины зачислены.\n\n"
+            f"+{order.token_amount} за {order.star_amount} ⭐\n"
+            f"Текущий баланс: {user.token_balance}."
         )
-    return "Оплата Stars получена."
+    return "Оплата звездами получена."
 
 
 async def create_withdrawal_request(
@@ -242,11 +242,11 @@ async def create_withdrawal_request(
     star_amount = token_amount // rate
     if token_amount < settings.psycoin_withdraw_min:
         raise TelegramStarsError(
-            f"Минимальный вывод: {settings.psycoin_withdraw_min} PsyCoin."
+            f"Минимальный вывод: {settings.psycoin_withdraw_min} псикоинов."
         )
     if user.token_balance < token_amount:
         raise TelegramStarsError(
-            f"Недостаточно PsyCoin. Нужно {token_amount}, сейчас {user.token_balance}."
+            f"Недостаточно псикоинов. Нужно {token_amount}, сейчас {user.token_balance}."
         )
 
     user.token_balance -= token_amount
@@ -268,11 +268,11 @@ async def create_withdrawal_request(
     )
     await db.flush()
     await notify_admins(
-        "Новая заявка на вывод PsyCoin в Stars.\n\n"
+        "Новая заявка на вывод псикоинов в звезды.\n\n"
         f"Заявка: {request.id}\n"
         f"Пользователь: {display_user(user)}\n"
         f"Telegram ID: {user.telegram_id}\n"
-        f"К выводу: {token_amount} PsyCoin = {star_amount} ⭐\n\n"
+        f"К выводу: {token_amount} псикоинов = {star_amount} ⭐\n\n"
         f"После ручной выплаты отметьте: /withdrawdone {request.id}"
     )
     return request

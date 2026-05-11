@@ -25,16 +25,18 @@ ADMIN_COMMANDS = [
     {"command": "users", "description": "Последние пользователи"},
     {"command": "user", "description": "Карточка пользователя"},
     {"command": "reset", "description": "Полностью обнулить профиль"},
-    {"command": "addcoins", "description": "Начислить PsyCoin"},
-    {"command": "grant", "description": "Изменить баланс PsyCoin"},
+    {"command": "addcoins", "description": "Начислить псикоины"},
+    {"command": "grant", "description": "Изменить баланс псикоинов"},
     {"command": "setscore", "description": "Задать индекс субъектности"},
     {"command": "setstatus", "description": "Задать статус"},
     {"command": "setlifecycle", "description": "Задать этап доступа"},
     {"command": "close", "description": "Закрыть активные сессии"},
     {"command": "shoplink", "description": "Ссылка на mini-app магазина"},
-    {"command": "withdrawals", "description": "Заявки на вывод Stars"},
-    {"command": "withdrawdone", "description": "Отметить вывод Stars"},
+    {"command": "withdrawals", "description": "Заявки на вывод звезд"},
+    {"command": "withdrawdone", "description": "Отметить вывод звезд"},
     {"command": "synccommands", "description": "Обновить меню команд"},
+    {"command": "syncwebhook", "description": "Подключить backend webhook"},
+    {"command": "webhookinfo", "description": "Проверить webhook"},
 ]
 
 

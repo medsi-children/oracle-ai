@@ -11,9 +11,9 @@ Backend MVP для Telegram-платформы **Оракул ИИ**.
 - Docker Compose
 - базовые сущности: users, sessions, messages, cases, assessments, token ledger
 - ETHOS first-contact flow и скрытая аналитика ответа
-- PsyCoin Shop: collectibles, привилегии, персональные рекомендации
+- магазин псикоинов: трофеи, привилегии, персональные рекомендации
 - групповые баттлы со ставкой 1 псикоин
-- HTTP API, который позже сможет дергать n8n
+- прямой Telegram webhook без n8n
 
 ## Быстрый старт
 
@@ -48,7 +48,7 @@ cp .env.example .env
 docker compose up --build
 ```
 
-## Первые ручки для n8n
+## Первые ручки
 
 Сохранить пользователя:
 
@@ -90,6 +90,20 @@ curl -X POST http://localhost:8000/api/v1/telegram/webhook \
   -d '{"update_id":1,"message":{"chat":{"id":123,"username":"test","first_name":"Denis"},"text":"Привет"}}'
 ```
 
+Прямой Telegram webhook для production:
+
+```text
+POST /api/v1/telegram/direct-webhook
+```
+
+Админ включает его командой:
+
+```text
+/syncwebhook
+```
+
+После этого n8n можно выключить.
+
 ## Команды Telegram MVP
 
 - `/start` — протокол первого контакта ETHOS и калибровочный кейс №0.
@@ -101,27 +115,26 @@ curl -X POST http://localhost:8000/api/v1/telegram/webhook \
 - `/battle [тема]` — баттл на свою тему, если куплена привилегия.
 - `/joinbattle` — присоединиться вторым участником.
 - `/finishbattle` — завершить баттл, распределить ставку и бонусы роста.
-- `/shop` — PsyCoin Shop.
+- `/shop` — магазин псикоинов.
 - `/buy 1` — покупка предмета, привилегии или персональной рекомендации.
-- `/summary` — ручная admin-команда для `medsi_children`.
-
-Админ `medsi_children` не проходит onboarding и не получает ETHOS-тесты. Для него
-доступны дополнительные команды:
+Для админа доступны дополнительные команды:
 
 - `/admin` — список админ-команд.
 - `/users [число]` — последние пользователи.
 - `/user @username` — карточка пользователя и счетчики.
 - `/reset @username` — полный reset профиля пользователя.
-- `/grant @username 10 причина` — изменить баланс PsyCoin.
+- `/grant @username 10 причина` — изменить баланс псикоинов.
 - `/setscore @username 50` — задать индекс субъектности.
 - `/setstatus @username object` — задать статус.
+- `/setlifecycle @username follower` — задать внутренний этап доступа.
 - `/close @username` — закрыть активные сессии пользователя.
 - `/shoplink @username` — ссылка на mini-app магазина.
+- `/synccommands` — обновить меню команд и mini-app кнопку.
+- `/syncwebhook` — подключить Telegram напрямую к backend.
+- `/webhookinfo` — проверить текущий Telegram webhook.
 
-Для `/start` backend дополнительно возвращает поле `intro_animation`: список коротких
-моноширинных строк с `duration_ms`. Telegram/n8n-слой должен отправить первую строку
-как временное сообщение, далее редактировать его по шагам, удалить временное сообщение
-и затем отправить `reply` с `reply_markup`.
+Для `/start` backend сам проигрывает `intro_animation`: отправляет первую строку как
+временное сообщение, редактирует его по шагам, удаляет и отправляет финальный `reply`.
 
 Админ сейчас задан по Telegram ID:
 
@@ -156,24 +169,8 @@ CLOSED_GROUP_INVITE_URL=https://t.me/+...
 - позже выложить frontend на GitHub Pages/Vercel/Netlify;
 - backend оставить на хостинге и подключить проверку Telegram WebApp-подписи.
 
-## Summary Админу
-
-Backend закрывает сессии, где пользователь молчит больше 60 минут, и создает summary.
-Отдельный n8n workflow `Оракул ИИ - Summary админу` каждые 10 минут забирает новые summary:
-
-```text
-GET /api/v1/admin/due-summaries
-```
-
-После отправки админу workflow помечает их отправленными:
-
-```text
-POST /api/v1/admin/summaries/{summary_id}/sent
-```
-
 ## Основная идея архитектуры
 
-n8n пока остается слоем автоматизации: Telegram webhook, расписания, уведомления.
-Backend становится ядром: хранит данные, принимает сообщения, оценивает ответы, ведет профиль и баллы.
-
-Позже Telegram можно полностью перенести в backend.
+Backend теперь сам принимает Telegram webhook, отправляет сообщения, inline-кнопки,
+intro-анимацию и платежные ответы Telegram Stars. n8n больше не нужен для production-бота и
+может оставаться только как legacy fallback.

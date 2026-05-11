@@ -11,6 +11,10 @@ from app.models.user import User
 from app.services.admin_reset import find_user_for_reset, reset_user_profile
 from app.services.assessment import calculate_status
 from app.services.stars import display_user, list_pending_withdrawals, mark_withdrawal_done
+from app.services.telegram_delivery import (
+    get_direct_telegram_webhook_info,
+    sync_direct_telegram_webhook,
+)
 from app.services.telegram_menu import sync_telegram_bot_commands
 
 VALID_STATUSES = {"object", "seeker", "faithful", "keeper", "sighted", "subject"}
@@ -34,16 +38,18 @@ def format_admin_help(*, success_prefix: bool = True) -> str:
         "/users [число] — последние пользователи\n"
         "/user @username — карточка пользователя\n"
         "/reset @username — полностью обнулить профиль\n"
-        "/grant @username 10 причина — изменить баланс PsyCoin\n"
-        "/addcoins @username 10 причина — начислить PsyCoin\n"
+        "/grant @username 10 причина — изменить баланс псикоинов\n"
+        "/addcoins @username 10 причина — начислить псикоины\n"
         "/setscore @username 50 — задать индекс субъектности\n"
         "/setstatus @username object — задать статус вручную\n"
         "/setlifecycle @username follower — задать этап доступа\n"
         "/close @username — закрыть активные сессии пользователя\n"
         "/shoplink @username — ссылка на mini-app магазина\n"
-        "/withdrawals — pending-заявки на вывод Stars\n"
+        "/withdrawals — заявки на вывод звезд\n"
         "/withdrawdone id — отметить заявку выплаченной\n"
-        "/synccommands — обновить меню команд Telegram"
+        "/synccommands — обновить меню команд Telegram\n"
+        "/syncwebhook — подключить Telegram напрямую к backend\n"
+        "/webhookinfo — проверить текущий Telegram webhook"
     )
     return format_admin_success(text) if success_prefix else text
 
@@ -71,7 +77,7 @@ async def format_users_list(db: AsyncSession, clean: str) -> str:
     for user in users:
         lines.append(
             f"{user_label(user)} | {user.lifecycle_status} | {user.status} | {user.subjectivity_score}/100 | "
-            f"{user.token_balance} PsyCoin"
+            f"{user.token_balance} псикоинов"
         )
     return format_admin_success("\n".join(lines))
 
@@ -110,7 +116,7 @@ async def format_user_card(db: AsyncSession, clean: str) -> str:
         f"Внутренний статус: {target.lifecycle_status}\n"
         f"Статус: {target.status}\n"
         f"Индекс субъектности: {target.subjectivity_score}/100\n"
-        f"Баланс: {target.token_balance} PsyCoin\n\n"
+        f"Баланс: {target.token_balance} псикоинов\n\n"
         f"Сессии: {sessions_count} (активных: {active_sessions})\n"
         f"Сообщения: {messages_count}\n"
         f"Оценки: {assessments_count}\n"
@@ -142,7 +148,7 @@ async def reset_command(db: AsyncSession, clean: str, *, admin: User) -> str:
     await reset_user_profile(db, target)
     return format_admin_success(
         f"Профиль {label} полностью обнулен.\n\n"
-        "Удалены история, сессии, оценки, покупки, заявки Stars и ledger псикоинов. "
+        "Удалены история, сессии, оценки, покупки, заявки на вывод звезд и ledger псикоинов. "
         "Внутренний статус: newbie. Статус: Объект. Баланс: 0."
     )
 
@@ -171,7 +177,7 @@ async def grant_command(db: AsyncSession, clean: str) -> str:
         )
     )
     return format_admin_success(
-        f"Баланс {user_label(target)} изменен на {amount}. Сейчас: {target.token_balance} PsyCoin."
+        f"Баланс {user_label(target)} изменен на {amount}. Сейчас: {target.token_balance} псикоинов."
     )
 
 
@@ -250,12 +256,12 @@ async def shoplink_command(db: AsyncSession, clean: str) -> str:
 async def withdrawals_command(db: AsyncSession) -> str:
     rows = await list_pending_withdrawals(db)
     if not rows:
-        return format_admin_success("Активных заявок на вывод Stars нет.")
-    lines = ["Заявки на вывод Stars:"]
+        return format_admin_success("Активных заявок на вывод звезд нет.")
+    lines = ["Заявки на вывод звезд:"]
     for request, user in rows:
         lines.append(
             f"{request.id} | {display_user(user)} | "
-            f"{request.token_amount} PsyCoin = {request.star_amount} ⭐"
+            f"{request.token_amount} псикоинов = {request.star_amount} ⭐"
         )
     return format_admin_success("\n".join(lines))
 
@@ -270,6 +276,17 @@ async def withdrawdone_command(db: AsyncSession, clean: str) -> str:
     return format_admin_success(
         f"Заявка {request.id} отмечена как выплаченная: {request.star_amount} ⭐."
     )
+
+
+async def syncwebhook_command() -> str:
+    result = await sync_direct_telegram_webhook()
+    if result.startswith("Direct webhook Telegram установлен."):
+        return format_admin_success(result)
+    return format_admin_error(result)
+
+
+async def webhookinfo_command() -> str:
+    return format_admin_success(await get_direct_telegram_webhook_info())
 
 
 async def handle_admin_tool_command(db: AsyncSession, admin: User, clean: str) -> str | None:
@@ -305,4 +322,8 @@ async def handle_admin_tool_command(db: AsyncSession, admin: User, clean: str) -
         if result.startswith("Меню команд Telegram обновлено."):
             return format_admin_success(result)
         return format_admin_error(result)
+    if command == "/syncwebhook":
+        return await syncwebhook_command()
+    if command == "/webhookinfo":
+        return await webhookinfo_command()
     return None

@@ -539,6 +539,25 @@ async def shop_app() -> str:
     .dev-card.visible {
       display: block;
     }
+    .wallet-card-copy {
+      display: grid;
+      gap: 12px;
+      text-align: left;
+    }
+    .wallet-line,
+    .wallet-rate,
+    .wallet-option {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .wallet-card-copy .coin-icon {
+      opacity: 1;
+      width: 22px;
+      height: 22px;
+      flex-basis: 22px;
+    }
     .premium-card {
       display: grid;
       gap: 18px;
@@ -974,14 +993,14 @@ async def shop_app() -> str:
       <div class="wallet-stage">
         <div class="card wallet-shell">
           <div class="wallet-coin-wrap">
-            <img class="wallet-coin loading-image" id="walletCoinImage" src="" alt="PsyCoin" />
+            <img class="wallet-coin loading-image" id="walletCoinImage" src="" alt="Псикоин" />
           </div>
           <div class="wallet-amount">
             <strong id="walletAmount">...</strong>
-            <span class="balance-label">PsyCoin</span>
+            <span class="balance-label">псикоины</span>
           </div>
           <div class="wallet-actions">
-            <button class="buy icon-buy" id="topUpStarsButton" type="button" aria-label="Купить PsyCoin за звезды">+</button>
+            <button class="buy icon-buy" id="topUpStarsButton" type="button" aria-label="Купить псикоины за звезды">+</button>
             <button class="buy" id="withdrawStarsButton" type="button">⭐ Вывести в звезды</button>
           </div>
           <div class="dev-card" id="balanceDevCard"></div>
@@ -1102,7 +1121,7 @@ async def shop_app() -> str:
     function coinMarkup(iconUrl, amount, className = 'price') {
       return `
         <span class="${className}">
-          <img class="coin-icon loading-image" src="${escapeHTML(iconUrl)}" alt="PsyCoin" loading="eager" decoding="async" />
+          <img class="coin-icon loading-image" src="${escapeHTML(iconUrl)}" alt="Псикоин" loading="eager" decoding="async" />
           <span class="coin-amount">${escapeHTML(amount)}</span>
         </span>
       `;
@@ -1118,7 +1137,7 @@ async def shop_app() -> str:
       return `
         <span class="balance-value">
           <span class="coin-amount">${escapeHTML(amount)}</span>
-          <img class="coin-icon loading-image" src="${escapeHTML(iconUrl)}" alt="PsyCoin" loading="eager" decoding="async" />
+          <img class="coin-icon loading-image" src="${escapeHTML(iconUrl)}" alt="Псикоин" loading="eager" decoding="async" />
           ${vipMarkup}
         </span>
       `;
@@ -1171,6 +1190,16 @@ async def shop_app() -> str:
     function showBalanceCard(html) {
       balanceDevCard.classList.add('visible');
       balanceDevCard.innerHTML = html;
+    }
+
+    function walletCoinInline(amount) {
+      const icon = escapeHTML(currentState?.currency_icon_url || '/static/shop/psycoin.png');
+      return `
+        <span class="wallet-line">
+          <img class="coin-icon" src="${icon}" alt="Псикоин" />
+          ${escapeHTML(amount)}
+        </span>
+      `;
     }
 
     function showPurchaseOverlay(title, text) {
@@ -1234,7 +1263,7 @@ async def shop_app() -> str:
 
     async function startSystemEntryPayment() {
       if (!telegramId) return;
-      entryStatus.textContent = 'Готовлю счет Telegram Stars...';
+      entryStatus.textContent = 'Готовлю счет...';
       entryButton.disabled = true;
       try {
         const res = await fetch('/api/v1/marketplace/stars/system-entry', {
@@ -1270,7 +1299,7 @@ async def shop_app() -> str:
         const data = await fetchState();
         if (data && data.token_balance !== currentState?.token_balance) {
           await load();
-          notice.textContent = 'PsyCoin зачислены.';
+          notice.textContent = 'Псикоины зачислены.';
           return;
         }
       }
@@ -1279,7 +1308,7 @@ async def shop_app() -> str:
 
     async function buyStarsTopUp(starAmount) {
       notice.textContent = '';
-      showBalanceCard('Готовлю счет Telegram Stars...');
+      showBalanceCard('Готовлю счет...');
       try {
         const res = await fetch('/api/v1/marketplace/stars/topup', {
           method: 'POST',
@@ -1294,7 +1323,15 @@ async def shop_app() -> str:
           showBalanceCard(escapeHTML(data.message || data.detail || 'Не удалось создать счет.'));
           return;
         }
-        showBalanceCard(escapeHTML(data.message));
+        showBalanceCard(`
+          <div class="wallet-card-copy">
+            <strong>Счет готов</strong>
+            <span class="wallet-line">
+              ${escapeHTML(data.star_amount || starAmount)} ⭐ =
+              ${walletCoinInline(data.token_amount || starAmount * (currentState?.psycoin_per_star || 5))}
+            </span>
+          </div>
+        `);
         openInvoice(data.invoice_url, refreshAfterPayment);
       } catch (error) {
         showBalanceCard('Не удалось открыть счет. Проверьте связь и попробуйте еще раз.');
@@ -1303,15 +1340,24 @@ async def shop_app() -> str:
 
     function renderTopUpCard() {
       const rate = currentState?.psycoin_per_star || 5;
+      const icon = escapeHTML(currentState?.currency_icon_url || '/static/shop/psycoin.png');
       const packages = [50, 100, 200, 500];
       showBalanceCard(`
-        <div style="display:grid;gap:12px;text-align:left">
-          <strong>Обмен Stars на PsyCoin</strong>
-          <span>Курс: 1 ⭐ = ${escapeHTML(rate)} PsyCoin</span>
+        <div class="wallet-card-copy">
+          <strong>Обмен звезд на псикоины</strong>
+          <span class="wallet-rate">
+            Курс: 1 ⭐ =
+            <img class="coin-icon" src="${icon}" alt="Псикоин" />
+            ${escapeHTML(rate)}
+          </span>
           <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">
             ${packages.map(stars => `
               <button class="buy" type="button" data-stars="${stars}">
-                ${stars} ⭐ → ${stars * rate} PsyCoin
+                <span class="wallet-option">
+                  ${stars} ⭐ →
+                  <img class="coin-icon" src="${icon}" alt="Псикоин" />
+                  ${stars * rate}
+                </span>
               </button>
             `).join('')}
           </div>
@@ -1338,7 +1384,21 @@ async def shop_app() -> str:
         const message = data.message || data.detail || 'Заявка обработана.';
         await load();
         openPanel('balancePanel');
-        showBalanceCard(escapeHTML(message));
+        if (res.ok && data.ok) {
+          showBalanceCard(`
+            <div class="wallet-card-copy">
+              <strong>Ваша заявка зарегистрирована</strong>
+              <span class="wallet-line">
+                ${walletCoinInline(data.token_amount || tokenAmount)}
+                зарезервированы для вывода в звезды
+              </span>
+              <span>Сумма к выплате: ${escapeHTML(data.star_amount || '')} ⭐</span>
+              <span>Администратор получил уведомление и обработает вывод вручную.</span>
+            </div>
+          `);
+        } else {
+          showBalanceCard(escapeHTML(message));
+        }
       } catch (error) {
         showBalanceCard('Не удалось отправить заявку. Проверьте связь и попробуйте еще раз.');
       }
@@ -1349,13 +1409,20 @@ async def shop_app() -> str:
       const rate = currentState?.psycoin_per_star || 5;
       const stars = Math.floor(min / rate);
       const enough = (currentState?.token_balance || 0) >= min;
+      const icon = escapeHTML(currentState?.currency_icon_url || '/static/shop/psycoin.png');
       showBalanceCard(`
-        <div style="display:grid;gap:12px;text-align:left">
-          <strong>Вывод PsyCoin в Stars</strong>
-          <span>Минимум: ${escapeHTML(min)} PsyCoin = ${escapeHTML(stars)} ⭐</span>
-          <span>После подачи заявки PsyCoin будут зарезервированы для вывода в звезды.</span>
+        <div class="wallet-card-copy">
+          <strong>Вывод псикоинов в звезды</strong>
+          <span class="wallet-line">
+            Минимум:
+            <img class="coin-icon" src="${icon}" alt="Псикоин" />
+            ${escapeHTML(min)}
+            =
+            ${escapeHTML(stars)} ⭐
+          </span>
+          <span>После подачи заявки псикоины будут зарезервированы для вывода в звезды.</span>
           <button class="buy" type="button" id="submitWithdrawalButton" ${enough ? '' : 'disabled'}>
-            ${enough ? 'Подать заявку' : 'Недостаточно PsyCoin'}
+            ${enough ? 'Подать заявку' : 'Недостаточно псикоинов'}
           </button>
         </div>
       `);
