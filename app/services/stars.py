@@ -249,6 +249,19 @@ async def create_withdrawal_request(
             f"Недостаточно псикоинов. Нужно {token_amount}, сейчас {user.token_balance}."
         )
 
+    existing_result = await db.execute(
+        select(StarWithdrawalRequest)
+        .where(
+            StarWithdrawalRequest.user_id == user.id,
+            StarWithdrawalRequest.status == "pending",
+        )
+        .limit(1)
+    )
+    if existing_result.scalar_one_or_none() is not None:
+        raise TelegramStarsError(
+            "У вас уже есть активная заявка на вывод. Дождитесь ручной обработки администратором."
+        )
+
     user.token_balance -= token_amount
     user.status = calculate_status(user.subjectivity_score, user.token_balance)
     request = StarWithdrawalRequest(

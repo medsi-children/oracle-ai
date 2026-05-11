@@ -193,7 +193,11 @@ async def setscore_command(db: AsyncSession, clean: str) -> str:
     except ValueError:
         return format_admin_error("Индекс должен быть числом от 0 до 100.")
     target.subjectivity_score = score
-    return format_admin_success(f"Индекс субъектности {user_label(target)} установлен: {score}/100.")
+    target.status = calculate_status(target.subjectivity_score, target.token_balance)
+    return format_admin_success(
+        f"Индекс субъектности {user_label(target)} установлен: {score}/100.\n"
+        f"Статус пересчитан: {target.status}."
+    )
 
 
 async def setstatus_command(db: AsyncSession, clean: str) -> str:

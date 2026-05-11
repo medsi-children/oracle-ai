@@ -50,6 +50,19 @@ from app.services.marketplace import buy_item, format_shop, user_owns_item_type
 from app.services.news import create_custom_news_case, get_or_create_news_case
 
 ONBOARDING_CASE_COUNT = 7
+GROUP_CHAT_TYPES = {"group", "supergroup"}
+GAMEPLAY_COMMANDS = {
+    "/battle",
+    "/battlefee",
+    "/joinbattle",
+    "/finishbattle",
+    "/case",
+    "/news",
+    "/finishdiscussion",
+    "/finishcase",
+    "/finishnews",
+    "/buy",
+}
 
 
 async def get_active_session(
@@ -294,6 +307,36 @@ def normalize_command_token(token: str) -> str:
     return clean
 
 
+def is_group_chat(chat_type: str | None) -> bool:
+    return chat_type in GROUP_CHAT_TYPES
+
+
+def is_onboarding_state(state: str) -> bool:
+    return state.startswith("onboarding:")
+
+
+def onboarding_required_reply() -> str:
+    return (
+        "Сначала пройдите входную проверку ETHOS.\n\n"
+        "Отправьте /start, ответьте на 7 вопросов и дождитесь финального допуска."
+    )
+
+
+def system_entry_required_reply() -> str:
+    return (
+        "Проверка уже пройдена.\n\n"
+        "Теперь откройте синюю кнопку возле поля отправки сообщений и нажмите "
+        f"«Войти в систему». Вход в закрытый контур стоит {settings.system_entry_star_price} ⭐."
+    )
+
+
+def group_only_reply() -> str:
+    return (
+        "Баттлы проходят в закрытом групповом чате ETHOS.\n\n"
+        "В личном чате можно пройти /case, посмотреть /profile или открыть /shop."
+    )
+
+
 async def has_custom_topic_privilege(db: AsyncSession, user: User) -> bool:
     if is_admin(user):
         return True
@@ -503,6 +546,17 @@ async def handle_user_text(
                 None,
             )
 
+    if (
+        user.lifecycle_status == "newbie"
+        and not admin_user
+        and command not in {"/start", "/help"}
+        and not is_onboarding_state(session.state)
+    ):
+        return onboarding_required_reply(), "onboarding_required", 0, first_contact_reply_markup()
+
+    if user.lifecycle_status == "beginner" and not admin_user and command in GAMEPLAY_COMMANDS:
+        return system_entry_required_reply(), "system_entry_required", 0, None
+
     if clean.startswith("bfee_other:"):
         return (
             "Отправьте уровень вручную: /battlefee 7. Допустимый диапазон: 1-100 псикоинов.",
@@ -709,7 +763,7 @@ async def handle_user_text(
                 0,
                 None,
             )
-        if chat_type in {"group", "supergroup"}:
+        if is_group_chat(chat_type):
             case = await create_custom_case(db, topic) if topic else await get_random_case(db)
             discussion = await create_case_discussion(db, user=user, chat_id=chat_id, case=case)
             return (
@@ -733,7 +787,7 @@ async def handle_user_text(
                 None,
             )
         item = await create_custom_news_case(db, topic) if topic else await get_or_create_news_case(db)
-        if chat_type in {"group", "supergroup"}:
+        if is_group_chat(chat_type):
             discussion = await create_news_discussion(db, user=user, chat_id=chat_id, item=item)
             return (
                 format_discussion_prompt(discussion),
@@ -752,6 +806,8 @@ async def handle_user_text(
             None,
         )
     if command == "/battle":
+        if not is_group_chat(chat_type):
+            return group_only_reply(), "battle_group_only", 0, None
         parts = clean.split(maxsplit=1)
         topic = parts[1].strip() if len(parts) > 1 else None
         if topic and not await has_custom_topic_privilege(db, user):
@@ -763,11 +819,10 @@ async def handle_user_text(
                 None,
             )
         battle = await create_battle(db, user=user, chat_id=chat_id, topic=topic)
-        location = "группе" if chat_type in {"group", "supergroup"} else "личном чате"
         return (
             "Баттл открыт.\n\n"
             f"ID: {battle.id}\n"
-            f"Режим: {location}\n\n"
+            "Режим: группа\n\n"
             f"Тема: {battle.topic}\n\n"
             "Выберите уровень участия. Победитель получит возврат своего взноса "
             "и такую же награду от системы.\n\n"
@@ -777,6 +832,8 @@ async def handle_user_text(
             battle_fee_reply_markup(battle.id),
         )
     if command == "/battlefee":
+        if not is_group_chat(chat_type):
+            return group_only_reply(), "battle_group_only", 0, None
         parts = clean.split(maxsplit=1)
         if len(parts) < 2 or not parts[1].strip().isdigit():
             return "Выберите уровень: /battlefee 1-100", "battle_fee_help", 0, None
@@ -801,6 +858,8 @@ async def handle_user_text(
             battle_join_reply_markup(battle.id) if ok else None,
         )
     if command == "/joinbattle":
+        if not is_group_chat(chat_type):
+            return group_only_reply(), "battle_group_only", 0, None
         battle, message = await join_waiting_battle(db, user=user, chat_id=chat_id)
         return (
             message,
@@ -809,6 +868,8 @@ async def handle_user_text(
             battle_finish_reply_markup(battle.id) if battle is not None and battle.status == "active" else None,
         )
     if command == "/finishbattle":
+        if not is_group_chat(chat_type):
+            return group_only_reply(), "battle_group_only", 0, None
         _, message, token_delta = await finish_active_battle(db, chat_id=chat_id)
         return message, "battle_finished", token_delta, None
     if command in {"/finishdiscussion", "/finishcase", "/finishnews"}:
@@ -935,7 +996,7 @@ async def handle_user_text(
         reply = format_assessment_reply("Разбор Sentinel Mode", assessment, token_delta)
         return reply, "news_assessment", token_delta, None
 
-    if chat_type in {"group", "supergroup"}:
+    if is_group_chat(chat_type):
         active_battle = await get_latest_battle(db, chat_id=chat_id, statuses={"active"})
         if active_battle is not None:
             return "Аргумент зафиксирован для текущего баттла.", "battle_argument", 0, None
