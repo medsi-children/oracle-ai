@@ -1258,28 +1258,28 @@ async def shop_app() -> str:
           
           <div style="display: grid; gap: 12px;">
             <button onclick="openAdminModal('grant')" class="buy" style="width:100%; padding:16px; font-size:15px; text-align:left;">
-              💰 /grant — Начислить псикоины
+              💰 Подарить псикоины
             </button>
             <button onclick="openAdminModal('setscore')" class="buy" style="width:100%; padding:16px; font-size:15px; text-align:left;">
-              📊 /setscore — Установить индекс субъектности
+              📊 Установить индекс субъектности
             </button>
             <button onclick="openAdminModal('setstatus')" class="buy" style="width:100%; padding:16px; font-size:15px; text-align:left;">
-              🏷️ /setstatus — Изменить статус пользователя
+              🏷️ Назначить уровень пользователя
             </button>
             <button onclick="openAdminModal('setlifecycle')" class="buy" style="width:100%; padding:16px; font-size:15px; text-align:left;">
-              🔄 /setlifecycle — Изменить этап доступа
+              🔄 Установить системный статус
             </button>
             <button onclick="openAdminModal('resetuser')" class="buy" style="width:100%; padding:16px; font-size:15px; text-align:left;">
-              🔄 /resetuser — Полный сброс пользователя
+              🔄 Сбросить профиль
             </button>
             <button onclick="openAdminModal('users')" class="buy" style="width:100%; padding:16px; font-size:15px; text-align:left;">
-              👥 /users — Показать последних пользователей
+              👥 Показать пользователей
             </button>
           </div>
           
           <p style="margin-top: 28px; font-size: 13px; color: #aaa; text-align: center; line-height: 1.5;">
             Нажми на действие → заполни данные → команда скопируется<br>
-            и отправь её в чат с ботом
+            и отправь её в чат боту
           </p>
         </div>
       `;
@@ -1294,7 +1294,7 @@ async def shop_app() -> str:
       let title = '';
 
       if (action === 'grant') {
-        title = 'Начислить псикоины';
+        title = 'Подарить псикоины';
         html = `
           <div style="margin-bottom:12px">
             <label style="font-size:13px; color:#cab8c0; display:block; margin-bottom:6px">Telegram ID пользователя</label>
@@ -1326,14 +1326,14 @@ async def shop_app() -> str:
         currentCommand = '/setscore';
       }
       else if (action === 'setstatus') {
-        title = 'Изменить статус';
+        title = 'Назначить уровень пользователя';
         html = `
           <div style="margin-bottom:12px">
             <label style="font-size:13px; color:#cab8c0; display:block; margin-bottom:6px">Telegram ID пользователя</label>
             <input type="text" id="adminTargetId" class="admin-input" placeholder="123456789">
           </div>
           <div>
-            <label style="font-size:13px; color:#cab8c0; display:block; margin-bottom:6px">Новый статус</label>
+            <label style="font-size:13px; color:#cab8c0; display:block; margin-bottom:6px">Новый уровень</label>
             <select id="adminStatus" class="admin-input">
               <option value="object">Объект</option>
               <option value="seeker">Соискатель</option>
@@ -1347,14 +1347,14 @@ async def shop_app() -> str:
         currentCommand = '/setstatus';
       }
       else if (action === 'setlifecycle') {
-        title = 'Изменить этап доступа';
+        title = 'Установить системный статус';
         html = `
           <div style="margin-bottom:12px">
             <label style="font-size:13px; color:#cab8c0; display:block; margin-bottom:6px">Telegram ID пользователя</label>
             <input type="text" id="adminTargetId" class="admin-input" placeholder="123456789">
           </div>
           <div>
-            <label style="font-size:13px; color:#cab8c0; display:block; margin-bottom:6px">Новый этап</label>
+            <label style="font-size:13px; color:#cab8c0; display:block; margin-bottom:6px">Новый статус</label>
             <select id="adminLifecycle" class="admin-input">
               <option value="newbie">newbie</option>
               <option value="beginner">beginner</option>
@@ -1366,7 +1366,7 @@ async def shop_app() -> str:
         currentCommand = '/setlifecycle';
       }
       else if (action === 'resetuser') {
-        title = 'Полный сброс пользователя';
+        title = 'Сбросить профиль';
         html = `
           <div>
             <label style="font-size:13px; color:#cab8c0; display:block; margin-bottom:6px">Telegram ID пользователя</label>
@@ -1376,7 +1376,7 @@ async def shop_app() -> str:
         currentCommand = '/resetuser';
       }
       else if (action === 'users') {
-        title = 'Список пользователей';
+        title = 'Показать пользователей';
         html = `<p style="color:#cab8c0; margin:0">Показать последних 20 пользователей</p>`;
         currentCommand = '/users';
       }
@@ -1566,7 +1566,7 @@ async def shop_app() -> str:
         const data = await fetchState();
         if (data && data.token_balance !== currentState?.token_balance) {
           await load();
-          notice.textContent = 'Псикоины зачислены.';
+          notice.textContent = 'Псикоины зачисщены.';
           return;
         }
       }
