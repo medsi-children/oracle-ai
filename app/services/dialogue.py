@@ -166,7 +166,7 @@ async def get_recent_user_texts(
 
 def format_first_contact() -> str:
     return (
-        "Добро пожаловать в систему ETHOS!\n\n"
+        "Добро пожожайте в систему ETHOS!\n\n"
         "Мир переполнен шумом. Большинство людей лишь ретранслируют чужие мысли, "
         "подчиняются чужим страхам и так и не приходят в сознание.\n\n"
         "Ты здесь, потому что в тебе зафиксирован потенциал Субъекта. "
@@ -454,8 +454,8 @@ async def build_onboarding_conclusion(
         " * ОБЪЕКТ (Статус по умолчанию)\n"
         "   Это человек-функция. Он действует реактивно: обижается, когда его задели, верит в то, что диктует лента новостей, и использует готовые шаблоны поведения. Объектом легко манипулировать, потому что его реакции предсказуемы. Он — материал для чужих решений.\n"
         " * СУБЪЕКТ (Цель трансформации)\n"
-        "   Это человек-автор. Он обладает «внутренним стержнем» и осознанностью. Субъект сам выбирает свою реакцию даже в условиях давления. Он видит манипуляции, берет ответственность за свои ошибки и сохраняет верность своим ценностям (своему «Эху»), даже когда это невыгодно. Он — источник смыслов.\n\n"
-        "Ваш следующий шаг — войти в систему ETHOS. Станьте частью сообщества, в котором проводятся ежедневные психологические баттлы, разбираются кейсы, зарабатываются псикоины, которые позднее можно вывести в Телеграм Звезды.\n\n"
+        "   Это человек-автор. Он обладает «внутреннем стержнем» и осознанностью. Субъект сам выбирает свою реакцию даже в условиях давления. Он видит манипуляции, берет ответственность за свои ошибки и сохраняет верность своим ценностям (своему «Эху»), даже когда это невыгодно. Он — источник смынов.\n\n"
+        "Ваш следующий шаг — войти в систему ETHOS. Станьте частью сообщества, в котором проводятся ежедневными психологическими баттлы, разбираются кейсы, зарабатываются псикоины, которые позднее можно вывести в Телеграм Звезды.\n\n"
         "Открывайте приложение по кнопке внизу и следуйте дальнейшим указаниям. Новый уровень контроля над своей реальностью — в одном клике от вас."
     )
     try:
@@ -934,7 +934,7 @@ async def handle_user_text(
         battle = await get_latest_battle(
             db,
             chat_id=chat_id,
-            statuses={"configuring"],
+            statuses=["configuring"],
             created_by_user_id=user.id,
         )
         if battle is None:
@@ -954,7 +954,7 @@ async def handle_user_text(
     if command == "/joinbattle":
         if not is_group_chat(chat_type):
             return group_only_reply(), "battle_group_only", 0, None
-        battle, message = await join_waiting_battle(db, user=user, chat_id=chat_id)
+        battle, message = await join_waiting_battle(db, user=user, chat_id=chat_id, battle_id=battle_id)
         return (
             message,
             "battle_join",
@@ -1105,13 +1105,13 @@ async def handle_user_text(
         return reply, "news_assessment", token_delta, None
 
     if is_group_chat(chat_type):
-        active_battle = await get_latest_battle(db, chat_id=chat_id, statuses={"active"])
+        active_battle = await get_latest_battle(db, chat_id=chat_id, statuses=["active"])
         if active_battle is not None:
             return "Аргумент зафиксирован для текущего баттла.", "battle_argument", 0, None
         active_discussion = await get_latest_discussion(
             db,
             chat_id=chat_id,
-            statuses={"active"],
+            statuses=["active"],
         )
         if active_discussion is not None:
             return "Вклад зафиксирован для текущего обсуждения.", "discussion_argument", 0, None
