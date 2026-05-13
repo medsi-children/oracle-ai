@@ -509,9 +509,97 @@ async def handle_user_text(
             session.state = "active"
         if command == "/start":
             return format_admin_help(success_prefix=False), "admin_start", 0, None
+
+        # ==================== АДМИН-КОМАНДЫ (работают прямо в боте) ====================
+        if command == "/grant" and len(clean.split()) >= 3:
+            parts = clean.split()
+            try:
+                target_id = int(parts[1])
+                amount = int(parts[2])
+                result = await db.execute(select(User).where(User.telegram_id == target_id))
+                target = result.scalar_one_or_none()
+                if not target:
+                    return "Пользователь не найден", "admin_error", 0, None
+                target.token_balance += amount
+                await db.commit()
+                return f"✅ Начислено {amount} псикоинов пользователю @{target.username or target_id}\nНовый баланс: {target.token_balance}", "admin_grant", 0, None
+            except:
+                return "Формат: /grant <telegram_id> <количество>", "admin_error", 0, None
+
+        if command == "/setscore" and len(clean.split()) >= 3:
+            parts = clean.split()
+            try:
+                target_id = int(parts[1])
+                score = int(parts[2])
+                result = await db.execute(select(User).where(User.telegram_id == target_id))
+                target = result.scalar_one_or_none()
+                if not target:
+                    return "Пользователь не найден", "admin_error", 0, None
+                target.subjectivity_score = max(0, min(100, score))
+                await db.commit()
+                return f"✅ Индекс субъектности установлен: {score}/100", "admin_setscore", 0, None
+            except:
+                return "Формат: /setscore <telegram_id> <0-100>", "admin_error", 0, None
+
+        if command == "/setstatus" and len(clean.split()) >= 3:
+            parts = clean.split()
+            try:
+                target_id = int(parts[1])
+                new_status = parts[2].lower()
+                result = await db.execute(select(User).where(User.telegram_id == target_id))
+                target = result.scalar_one_or_none()
+                if not target:
+                    return "Пользователь не найден", "admin_error", 0, None
+                target.status = new_status
+                await db.commit()
+                return f"✅ Статус изменён на: {new_status}", "admin_setstatus", 0, None
+            except:
+                return "Формат: /setstatus <telegram_id> <object|seeker|faithful|keeper|sighted|subject>", "admin_error", 0, None
+
+        if command == "/setlifecycle" and len(clean.split()) >= 3:
+            parts = clean.split()
+            try:
+                target_id = int(parts[1])
+                new_lifecycle = parts[2].lower()
+                result = await db.execute(select(User).where(User.telegram_id == target_id))
+                target = result.scalar_one_or_none()
+                if not target:
+                    return "Пользователь не найден", "admin_error", 0, None
+                target.lifecycle_status = new_lifecycle
+                await db.commit()
+                return f"✅ Этап доступа изменён на: {new_lifecycle}", "admin_setlifecycle", 0, None
+            except:
+                return "Формат: /setlifecycle <telegram_id> <newbie|beginner|follower|admin>", "admin_error", 0, None
+
+        if command == "/resetuser" and len(clean.split()) >= 2:
+            try:
+                target_id = int(clean.split()[1])
+                result = await db.execute(select(User).where(User.telegram_id == target_id))
+                target = result.scalar_one_or_none()
+                if not target:
+                    return "Пользователь не найден", "admin_error", 0, None
+                target.token_balance = 0
+                target.subjectivity_score = 0
+                target.status = "object"
+                target.lifecycle_status = "newbie"
+                target.profile_summary = None
+                await db.commit()
+                return "✅ Пользователь полностью сброшен", "admin_reset", 0, None
+            except:
+                return "Формат: /resetuser <telegram_id>", "admin_error", 0, None
+
+        if command == "/users":
+            result = await db.execute(select(User).order_by(User.created_at.desc()).limit(20))
+            users = result.scalars().all()
+            text = "Последние 20 пользователей:\n\n"
+            for u in users:
+                text += f"@{u.username or u.telegram_id} | {u.status} | {u.lifecycle_status} | {u.subjectivity_score}/100 | {u.token_balance}🪙\n"
+            return text, "admin_users", 0, None
+
         admin_reply = await handle_admin_tool_command(db, user, clean)
         if admin_reply is not None:
             return admin_reply, "admin_command", 0, None
+
         if command == "/case" and chat_type not in {"group", "supergroup"}:
             parts = clean.split(maxsplit=1)
             case = (
@@ -884,19 +972,14 @@ async def handle_user_text(
     if command == "/shop":
         if user.lifecycle_status == "admin":
             return (
-                "Админ-панель ETHOS\n\n"
-                "/addcoins <telegram_id> <количество> - Начислить псикоины\n"
-                "/grant <telegram_id> <операция> <сумма> - Управлять балансом\n"
-                "/setscore <telegram_id> <число> - Установить индекс субъектности\n"
-                "/setstatus <telegram_id> <статус> - Изменить статус пользователя\n"
-                "/setlifecycle <telegram_id> <статус> - Изменить этап доступа\n"
-                "/close <telegram_id> - Закрыть активные сессии\n"
-                "/users - Последние пользователи\n"
-                "/user <telegram_id> - Карточка пользователя\n"
-                "/reset <telegram_id> - Полностью обнулить профиль\n"
-                "/withdrawals - Заявки на вывод звезд\n"
-                "/withdrawdone <telegram_id> - Отметить вывод\n\n"
-                "Остальные команды через /admin",
+                "Админ-панель ETHOS (команды в боте):\n\n"
+                "/grant <id> <кол-во> — выдать псикоины\n"
+                "/setscore <id> <0-100> — установить индекс\n"
+                "/setstatus <id> <статус> — изменить статус\n"
+                "/setlifecycle <id> <этап> — изменить этап\n"
+                "/resetuser <id> — полный сброс\n"
+                "/users — список пользователей\n\n"
+                "Все команды работают прямо в этом чате.",
                 "admin_panel",
                 0,
                 None,
@@ -923,8 +1006,8 @@ async def handle_user_text(
             + f"?telegram_id={user.telegram_id}",
             "shop",
             0,
-            None,
-        )
+                None,
+            )
     if command == "/buy":
         if user.lifecycle_status != "follower" and not is_admin(user):
             return (
@@ -1036,9 +1119,9 @@ async def handle_user_text(
             "В группе я реагирую на команды: /battle, /joinbattle, /finishbattle, "
             "/news, /case, /finishdiscussion.",
             "group_idle",
-            0,
-            None,
-        )
+                0,
+                None,
+            )
 
     reply = await build_supportive_reply_with_context(db, session=session, text=clean)
     if not admin_user:
