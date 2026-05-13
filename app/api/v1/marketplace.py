@@ -36,18 +36,29 @@ DEFAULT_CLOSED_GROUP_INVITE_URL = "https://t.me/+jkSp6Vx8L35kYmRi"
 
 
 async def get_user_by_telegram_id(db: AsyncSession, telegram_id: int) -> User:
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"get_user_by_telegram_id called with telegram_id={telegram_id} (type: {type(telegram_id).__name__})")
     result = await db.execute(select(User).where(User.telegram_id == telegram_id))
     user = result.scalar_one_or_none()
     if user is None:
+        logger.warning(f"User not found for telegram_id={telegram_id}")
         raise HTTPException(status_code=404, detail="User not found")
+    logger.info(f"Found user: {user.telegram_id}, lifecycle_status={user.lifecycle_status}")
     return user
 
 
 def ensure_marketplace_access(user: User) -> None:
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"ensure_marketplace_access: user={user.telegram_id}, lifecycle_status={user.lifecycle_status}")
     if user.lifecycle_status == "admin":
+        logger.info(f"ensure_marketplace_access: admin user, allowing access")
         return
     if user.lifecycle_status == "newbie" and not is_admin(user):
+        logger.warning(f"ensure_marketplace_access: newbie user without admin flag, blocking access")
         raise HTTPException(status_code=403, detail="shop_locked_newbie")
+    logger.info(f"ensure_marketplace_access: allowing access for lifecycle_status={user.lifecycle_status}")
 
 
 def ensure_full_marketplace_access(user: User) -> None:

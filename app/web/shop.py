@@ -11,6 +11,9 @@ async def shop_app() -> str:
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <title>Магазин</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
@@ -1053,7 +1056,14 @@ async def shop_app() -> str:
       qs.get('telegram_id') || tg?.initDataUnsafe?.user?.id || ''
     ).trim();
 
-    const balanceButton = document.getElementById('balanceButton');
+    const notice = document.getElementById('notice');
+    
+    if (!telegramId) {
+      if (notice) notice.textContent = 'Ошибка: не удалось определить Telegram ID. Откройте mini-app через Telegram.';
+      document.body.classList.add('locked');
+      throw new Error('telegram_id is empty');
+    }
+
     const balance = document.getElementById('balance');
     const lockedView = document.getElementById('lockedView');
     const entryView = document.getElementById('entryView');
@@ -1071,7 +1081,6 @@ async def shop_app() -> str:
     const profileButton = document.getElementById('profileButton');
     const itemsBox = document.getElementById('items');
     const premiumBox = document.getElementById('premiumBox');
-    const notice = document.getElementById('notice');
     const wisdomImage = document.getElementById('wisdomImage');
     const wisdomTitle = document.getElementById('wisdomTitle');
     const wisdomDescription = document.getElementById('wisdomDescription');
@@ -1243,18 +1252,31 @@ async def shop_app() -> str:
     }
 
     async function fetchState() {
+      const telegramIdNum = Number(telegramId);
+      if (!telegramIdNum) {
+        const msg = 'Ошибка: некорректный Telegram ID';
+        console.error('fetchState():', msg, 'raw:', telegramId);
+        notice.textContent = msg;
+        return null;
+      }
+      console.log('fetchState(): requesting state for telegram_id:', telegramIdNum);
       const res = await fetch(
-        `/api/v1/marketplace/state?telegram_id=${encodeURIComponent(telegramId)}`
+        `/api/v1/marketplace/state?telegram_id=${telegramIdNum}`
       );
+      console.log('fetchState(): response status:', res.status);
       if (res.status === 403) {
+        console.warn('fetchState(): got 403 Forbidden');
         showLocked();
         return null;
       }
       if (!res.ok) {
+        console.error('fetchState(): error:', res.status, res.statusText);
         notice.textContent = 'Пользователь не найден. Сначала напишите боту /start.';
         return null;
       }
-      return await res.json();
+      const data = await res.json();
+      console.log('fetchState(): got data:', data);
+      return data;
     }
 
     function openInvoice(invoiceUrl, onPaid) {
@@ -1463,20 +1485,29 @@ async def shop_app() -> str:
     async function load() {
       if (!telegramId) {
         notice.textContent = 'Откройте магазин из Telegram или передайте telegram_id в ссылке.';
+        console.error('load(): telegramId is empty');
         return;
       }
 
       notice.textContent = '';
       document.body.classList.remove('locked');
       document.body.classList.remove('entry');
+      console.log('load(): fetching state for telegram_id:', telegramId);
       const data = await fetchState();
-      if (!data) return;
+      console.log('load(): fetchState returned:', data);
+      if (!data) {
+        console.log('load(): no data returned, exiting');
+        return;
+      }
       currentState = data;
+      console.log('load(): lifecycle_status:', data.lifecycle_status);
       if (data.lifecycle_status === 'admin') {
+        console.log('load(): showing admin panel');
         showAdminPanel();
         return;
       }
       if (data.lifecycle_status === 'beginner') {
+        console.log('load(): showing entry');
         showEntry(data);
         return;
       }
