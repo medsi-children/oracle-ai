@@ -854,6 +854,46 @@ async def shop_app() -> str:
     .entry-link.visible {
       display: inline-flex;
     }
+    .admin-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(13, 8, 11, .92);
+      backdrop-filter: blur(16px);
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .admin-modal.visible {
+      display: flex;
+    }
+    .admin-modal-content {
+      width: min(100%, 420px);
+      background: #1b1318;
+      border: 1px solid #ffd3df;
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 30px 80px rgba(0,0,0,.6);
+    }
+    .admin-modal h3 {
+      margin: 0 0 16px 0;
+      font-size: 20px;
+    }
+    .admin-input {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid #ffd3df;
+      background: #130f15;
+      color: #f8eef2;
+      font-size: 15px;
+      margin-bottom: 12px;
+    }
+    .admin-input:focus {
+      outline: none;
+      border-color: #ff8fb1;
+    }
     @media (max-width: 840px) {
       header {
         grid-template-columns: minmax(0, 1fr) auto;
@@ -1035,6 +1075,20 @@ async def shop_app() -> str:
     </section>
   </main>
 
+  <!-- Admin Action Modal -->
+  <div class="admin-modal" id="adminModal">
+    <div class="admin-modal-content">
+      <h3 id="modalTitle">Действие</h3>
+      
+      <div id="modalFields"></div>
+      
+      <div style="display: flex; gap: 10px; margin-top: 20px;">
+        <button class="buy" id="modalExecuteBtn" style="flex:1">Скопировать команду</button>
+        <button class="tab" id="modalCancelBtn" style="flex:1">Отмена</button>
+      </div>
+    </div>
+  </div>
+
   <div class="purchase-overlay" id="purchaseOverlay">
     <div class="card purchase-modal">
       <h2 id="purchaseTitle">Поздравляем с покупкой</h2>
@@ -1096,7 +1150,16 @@ async def shop_app() -> str:
     const purchaseText = document.getElementById('purchaseText');
     const purchaseProfileButton = document.getElementById('purchaseProfileButton');
     const purchaseCloseButton = document.getElementById('purchaseCloseButton');
+    
+    // Admin modal elements
+    const adminModal = document.getElementById('adminModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalFields = document.getElementById('modalFields');
+    const modalExecuteBtn = document.getElementById('modalExecuteBtn');
+    const modalCancelBtn = document.getElementById('modalCancelBtn');
+    
     let currentState = null;
+    let currentCommand = '';
 
     const statusLabels = {
       object: 'Объект',
@@ -1184,55 +1247,195 @@ async def shop_app() -> str:
       lockedView.textContent = 'Ты здесь слишком рано. Ты еще не готов. Оракул ожидает тебя в чате';
     }
 
+    // ==================== ADMIN PANEL WITH MODALS ====================
     function showAdminPanel() {
       document.body.classList.add('locked');
       document.body.classList.remove('entry');
       
       lockedView.innerHTML = `
-        <div style="max-width: 420px; margin: 0 auto; text-align: left;">
-          <h2 style="margin: 0 0 20px 0; font-size: 22px; text-align: center;">Админ-панель ETHOS</h2>
+        <div style="max-width: 460px; margin: 0 auto; text-align: left;">
+          <h2 style="margin: 0 0 24px 0; font-size: 24px; text-align: center; color: #ffe9f0;">Админ-панель ETHOS</h2>
           
-          <div style="display: grid; gap: 10px;">
-            <button onclick="copyCommand('/grant <id> <кол-во>')" style="width:100%; padding:14px; border-radius:14px; border:1px solid #ffd3df; background:rgba(255,184,202,.12); color:#ffe9f0; font-weight:700; cursor:pointer;">
-              /grant <id> <кол-во> — начислить псикоины
+          <div style="display: grid; gap: 12px;">
+            <button onclick="openAdminModal('grant')" class="buy" style="width:100%; padding:16px; font-size:15px; text-align:left;">
+              💰 /grant — Начислить псикоины
             </button>
-            <button onclick="copyCommand('/setscore <id> <0-100>')" style="width:100%; padding:14px; border-radius:14px; border:1px solid #ffd3df; background:rgba(255,184,202,.12); color:#ffe9f0; font-weight:700; cursor:pointer;">
-              /setscore <id> <0-100> — установить индекс
+            <button onclick="openAdminModal('setscore')" class="buy" style="width:100%; padding:16px; font-size:15px; text-align:left;">
+              📊 /setscore — Установить индекс субъектности
             </button>
-            <button onclick="copyCommand('/setstatus <id> <статус>')" style="width:100%; padding:14px; border-radius:14px; border:1px solid #ffd3df; background:rgba(255,184,202,.12); color:#ffe9f0; font-weight:700; cursor:pointer;">
-              /setstatus <id> <статус> — изменить статус
+            <button onclick="openAdminModal('setstatus')" class="buy" style="width:100%; padding:16px; font-size:15px; text-align:left;">
+              🏷️ /setstatus — Изменить статус пользователя
             </button>
-            <button onclick="copyCommand('/setlifecycle <id> <newbie|beginner|follower|admin>')" style="width:100%; padding:14px; border-radius:14px; border:1px solid #ffd3df; background:rgba(255,184,202,.12); color:#ffe9f0; font-weight:700; cursor:pointer;">
-              /setlifecycle <id> <этап> — изменить этап
+            <button onclick="openAdminModal('setlifecycle')" class="buy" style="width:100%; padding:16px; font-size:15px; text-align:left;">
+              🔄 /setlifecycle — Изменить этап доступа
             </button>
-            <button onclick="copyCommand('/resetuser <id>')" style="width:100%; padding:14px; border-radius:14px; border:1px solid #ffd3df; background:rgba(255,184,202,.12); color:#ffe9f0; font-weight:700; cursor:pointer;">
-              /resetuser <id> — полный сброс пользователя
+            <button onclick="openAdminModal('resetuser')" class="buy" style="width:100%; padding:16px; font-size:15px; text-align:left;">
+              🔄 /resetuser — Полный сброс пользователя
             </button>
-            <button onclick="copyCommand('/users')" style="width:100%; padding:14px; border-radius:14px; border:1px solid #ffd3df; background:rgba(255,184,202,.12); color:#ffe9f0; font-weight:700; cursor:pointer;">
-              /users — список последних пользователей
+            <button onclick="openAdminModal('users')" class="buy" style="width:100%; padding:16px; font-size:15px; text-align:left;">
+              👥 /users — Показать последних пользователей
             </button>
           </div>
           
-          <p style="margin-top: 24px; font-size: 13px; color: #aaa; text-align: center;">
-            Все команды работают в личном чате с ботом.<br>
-            Нажми на команду — она скопируется в буфер обмена.
+          <p style="margin-top: 28px; font-size: 13px; color: #aaa; text-align: center; line-height: 1.5;">
+            Нажми на действие → заполни данные → команда скопируется<br>
+            и отправь её в чат с ботом
           </p>
         </div>
       `;
     }
 
-    function copyCommand(cmd) {
-      navigator.clipboard.writeText(cmd).then(() => {
-        const originalText = event.target.innerHTML;
-        event.target.innerHTML = '✅ Скопировано!'
-        setTimeout(() => {
-          if (event.target) event.target.innerHTML = originalText;
-        }, 1200);
-      }).catch(() => {
-        // fallback
-        prompt('Скопируй команду:', cmd);
-      });
+    function openAdminModal(action) {
+      adminModal.classList.add('visible');
+      modalFields.innerHTML = '';
+      currentCommand = '';
+
+      let html = '';
+      let title = '';
+
+      if (action === 'grant') {
+        title = 'Начислить псикоины';
+        html = `
+          <div style="margin-bottom:12px">
+            <label style="font-size:13px; color:#cab8c0; display:block; margin-bottom:6px">Telegram ID пользователя</label>
+            <input type="text" id="adminTargetId" class="admin-input" placeholder="123456789" value="">
+          </div>
+          <div style="margin-bottom:12px">
+            <label style="font-size:13px; color:#cab8c0; display:block; margin-bottom:6px">Количество псикоинов</label>
+            <input type="number" id="adminAmount" class="admin-input" placeholder="500" value="100">
+          </div>
+          <div>
+            <label style="font-size:13px; color:#cab8c0; display:block; margin-bottom:6px">Причина (опционально)</label>
+            <input type="text" id="adminReason" class="admin-input" placeholder="Бонус за активность">
+          </div>
+        `;
+        currentCommand = '/grant';
+      } 
+      else if (action === 'setscore') {
+        title = 'Установить индекс субъектности';
+        html = `
+          <div style="margin-bottom:12px">
+            <label style="font-size:13px; color:#cab8c0; display:block; margin-bottom:6px">Telegram ID пользователя</label>
+            <input type="text" id="adminTargetId" class="admin-input" placeholder="123456789">
+          </div>
+          <div>
+            <label style="font-size:13px; color:#cab8c0; display:block; margin-bottom:6px">Новый индекс (0-100)</label>
+            <input type="number" id="adminAmount" class="admin-input" placeholder="85" min="0" max="100" value="75">
+          </div>
+        `;
+        currentCommand = '/setscore';
+      }
+      else if (action === 'setstatus') {
+        title = 'Изменить статус';
+        html = `
+          <div style="margin-bottom:12px">
+            <label style="font-size:13px; color:#cab8c0; display:block; margin-bottom:6px">Telegram ID пользователя</label>
+            <input type="text" id="adminTargetId" class="admin-input" placeholder="123456789">
+          </div>
+          <div>
+            <label style="font-size:13px; color:#cab8c0; display:block; margin-bottom:6px">Новый статус</label>
+            <select id="adminStatus" class="admin-input">
+              <option value="object">Объект</option>
+              <option value="seeker">Соискатель</option>
+              <option value="faithful">Верный</option>
+              <option value="keeper">Хранитель</option>
+              <option value="sighted">Зрячий</option>
+              <option value="subject">Субъект</option>
+            </select>
+          </div>
+        `;
+        currentCommand = '/setstatus';
+      }
+      else if (action === 'setlifecycle') {
+        title = 'Изменить этап доступа';
+        html = `
+          <div style="margin-bottom:12px">
+            <label style="font-size:13px; color:#cab8c0; display:block; margin-bottom:6px">Telegram ID пользователя</label>
+            <input type="text" id="adminTargetId" class="admin-input" placeholder="123456789">
+          </div>
+          <div>
+            <label style="font-size:13px; color:#cab8c0; display:block; margin-bottom:6px">Новый этап</label>
+            <select id="adminLifecycle" class="admin-input">
+              <option value="newbie">newbie</option>
+              <option value="beginner">beginner</option>
+              <option value="follower">follower</option>
+              <option value="admin">admin</option>
+            </select>
+          </div>
+        `;
+        currentCommand = '/setlifecycle';
+      }
+      else if (action === 'resetuser') {
+        title = 'Полный сброс пользователя';
+        html = `
+          <div>
+            <label style="font-size:13px; color:#cab8c0; display:block; margin-bottom:6px">Telegram ID пользователя</label>
+            <input type="text" id="adminTargetId" class="admin-input" placeholder="123456789">
+          </div>
+        `;
+        currentCommand = '/resetuser';
+      }
+      else if (action === 'users') {
+        title = 'Список пользователей';
+        html = `<p style="color:#cab8c0; margin:0">Показать последних 20 пользователей</p>`;
+        currentCommand = '/users';
+      }
+
+      modalTitle.textContent = title;
+      modalFields.innerHTML = html;
+
+      modalExecuteBtn.onclick = () => executeAdminAction(action);
+      modalCancelBtn.onclick = () => adminModal.classList.remove('visible');
     }
+
+    function executeAdminAction(action) {
+      let cmd = '';
+      const targetId = document.getElementById('adminTargetId')?.value.trim();
+
+      if (action === 'grant') {
+        const amount = document.getElementById('adminAmount')?.value || '100';
+        const reason = document.getElementById('adminReason')?.value || '';
+        cmd = `/grant ${targetId || '<id>'} ${amount}`;
+        if (reason) cmd += ` // ${reason}`;
+      } 
+      else if (action === 'setscore') {
+        const score = document.getElementById('adminAmount')?.value || '75';
+        cmd = `/setscore ${targetId || '<id>'} ${score}`;
+      }
+      else if (action === 'setstatus') {
+        const status = document.getElementById('adminStatus')?.value || 'object';
+        cmd = `/setstatus ${targetId || '<id>'} ${status}`;
+      }
+      else if (action === 'setlifecycle') {
+        const lifecycle = document.getElementById('adminLifecycle')?.value || 'newbie';
+        cmd = `/setlifecycle ${targetId || '<id>'} ${lifecycle}`;
+      }
+      else if (action === 'resetuser') {
+        cmd = `/resetuser ${targetId || '<id>'}`;
+      }
+      else if (action === 'users') {
+        cmd = '/users';
+      }
+
+      if (cmd) {
+        navigator.clipboard.writeText(cmd).then(() => {
+          modalExecuteBtn.textContent = '✅ Скопировано! Отправь в чат боту';
+          setTimeout(() => {
+            adminModal.classList.remove('visible');
+            modalExecuteBtn.textContent = 'Скопировать команду';
+            notice.textContent = `Команда скопирована: ${cmd}`;
+            setTimeout(() => notice.textContent = '', 3000);
+          }, 1400);
+        }).catch(() => {
+          prompt('Скопируй команду вручную:', cmd);
+          adminModal.classList.remove('visible');
+        });
+      } else {
+        adminModal.classList.remove('visible');
+      }
+    }
+
+    // ==================== END ADMIN PANEL ====================
 
     function showEntry(data) {
       currentState = data;
@@ -1243,11 +1446,8 @@ async def shop_app() -> str:
       entryJoinLink.href = data.closed_group_invite_url || '#';
       entryJoinLink.classList.remove('visible');
       entryStatus.textContent = 'Проверка пройдена. Последний шаг - вход в закрытый контур системы. Вы готовы?';
-      // Update entry title
       const entryTitle = document.querySelector('.entry-view .entry-title');
-      if (entryTitle) {
-        entryTitle.textContent = 'Вход в систему';
-      }
+      if (entryTitle) entryTitle.textContent = 'Вход в систему';
       hydrateImages(entryView);
     }
 
@@ -1284,30 +1484,20 @@ async def shop_app() -> str:
         notice.textContent = msg;
         return null;
       }
-      console.log('fetchState(): requesting state for telegram_id:', telegramIdNum);
-      const res = await fetch(
-        `/api/v1/marketplace/state?telegram_id=${telegramIdNum}`
-      );
-      console.log('fetchState(): response status:', res.status);
+      const res = await fetch(`/api/v1/marketplace/state?telegram_id=${telegramIdNum}`);
       if (res.status === 403) {
-        console.warn('fetchState(): got 403 Forbidden');
         showLocked();
         return null;
       }
       if (!res.ok) {
-        console.error('fetchState(): error:', res.status, res.statusText);
         notice.textContent = 'Пользователь не найден. Сначала напишите боту /start.';
         return null;
       }
-      const data = await res.json();
-      console.log('fetchState(): got data:', data);
-      return data;
+      return await res.json();
     }
 
     function openInvoice(invoiceUrl, onPaid) {
-      if (!invoiceUrl) {
-        throw new Error('invoice_url is empty');
-      }
+      if (!invoiceUrl) throw new Error('invoice_url is empty');
       if (tg?.openInvoice) {
         tg.openInvoice(invoiceUrl, status => {
           if (status === 'paid') onPaid?.();
@@ -1376,7 +1566,7 @@ async def shop_app() -> str:
         const data = await fetchState();
         if (data && data.token_balance !== currentState?.token_balance) {
           await load();
-          notice.textContent = 'Псикоины зачисщены.';
+          notice.textContent = 'Псикоины зачислены.';
           return;
         }
       }
@@ -1517,32 +1707,25 @@ async def shop_app() -> str:
       notice.textContent = '';
       document.body.classList.remove('locked');
       document.body.classList.remove('entry');
-      console.log('load(): fetching state for telegram_id:', telegramId);
       const data = await fetchState();
-      console.log('load(): fetchState returned:', data);
-      if (!data) {
-        console.log('load(): no data returned, exiting');
-        return;
-      }
+      if (!data) return;
+
       currentState = data;
-      console.log('load(): lifecycle_status:', data.lifecycle_status);
+
       if (data.lifecycle_status === 'admin') {
-        console.log('load(): showing admin panel');
         showAdminPanel();
         return;
       }
       if (data.lifecycle_status === 'beginner') {
-        console.log('load(): showing entry');
         showEntry(data);
         return;
       }
+
       const collectibles = data.items.filter(item => item.item_type === 'collectible');
       const wisdom = data.items.find(item => item.item_type === 'wisdom_sphere');
       const premium = data.items.find(item => item.item_type.startsWith('privilege_'));
       const ownedInventory = data.inventory || [];
-      const ownedPremium = data.purchases.find(
-        item => item.item_type === 'privilege_custom_battle_topic'
-      );
+      const ownedPremium = data.purchases.find(item => item.item_type === 'privilege_custom_battle_topic');
       const premiumBadge = ownedPremium || null;
 
       balance.innerHTML = renderBalance(data.currency_icon_url, data.token_balance, premiumBadge);
@@ -1554,25 +1737,14 @@ async def shop_app() -> str:
       balanceDevCard.innerHTML = '';
       profileStatus.textContent = statusLabels[data.status] || data.status;
       profileScore.textContent = `${data.subjectivity_score}/100`;
-      profileBalance.innerHTML = coinMarkup(
-        data.currency_icon_url,
-        data.token_balance,
-        'price profile-balance-value'
-      );
-      profileSummary.textContent = data.profile_summary ||
-        'Психологический портрет еще формируется.';
+      profileBalance.innerHTML = coinMarkup(data.currency_icon_url, data.token_balance, 'price profile-balance-value');
+      profileSummary.textContent = data.profile_summary || 'Психологический портрет еще формируется.';
+
       if (ownedInventory.length) {
         profileCollectibles.classList.add('visible');
         profileCollectiblesList.innerHTML = ownedInventory.map(item => `
           <div class="inventory-tile">
-            <img
-              class="profile-collectible loading-image"
-              src="${escapeHTML(item.image_url)}"
-              alt="${escapeHTML(item.title)}"
-              title="${escapeHTML(item.title)}"
-              loading="lazy"
-              decoding="async"
-            />
+            <img class="profile-collectible loading-image" src="${escapeHTML(item.image_url)}" alt="${escapeHTML(item.title)}" title="${escapeHTML(item.title)}" loading="lazy" decoding="async" />
             <span>${escapeHTML(item.title)}</span>
           </div>
         `).join('');
@@ -1589,13 +1761,7 @@ async def shop_app() -> str:
         return `
           <article class="card item">
             <div class="item-head">
-              <img
-                class="item-media loading-image"
-                src="${escapeHTML(item.image_url)}"
-                alt="${escapeHTML(item.title)}"
-                loading="lazy"
-                decoding="async"
-              />
+              <img class="item-media loading-image" src="${escapeHTML(item.image_url)}" alt="${escapeHTML(item.title)}" loading="lazy" decoding="async" />
               <div class="item-copy">
                 <div class="item-top">
                   <h2>${escapeHTML(item.title)}</h2>
@@ -1639,21 +1805,11 @@ async def shop_app() -> str:
               </div>
               <p class="premium-copy">${escapeHTML(premium.description)}</p>
             </div>
-            <img
-              class="item-media premium-media loading-image"
-              src="${escapeHTML(premium.image_url)}"
-              alt="${escapeHTML(premium.title)}"
-              loading="lazy"
-              decoding="async"
-            />
+            <img class="item-media premium-media loading-image" src="${escapeHTML(premium.image_url)}" alt="${escapeHTML(premium.title)}" loading="lazy" decoding="async" />
           </div>
           <div class="item-meta">
             ${coinMarkup(premium.currency_icon_url, premium.price_tokens)}
-            <button
-              class="buy"
-              ${!premium.can_purchase || data.token_balance < premium.price_tokens ? 'disabled' : ''}
-              onclick="buyById('${premium.id}')"
-            >${premium.is_owned ? 'Уже активно' : 'Купить'}</button>
+            <button class="buy" ${!premium.can_purchase || data.token_balance < premium.price_tokens ? 'disabled' : ''} onclick="buyById('${premium.id}')">${premium.is_owned ? 'Уже активно' : 'Купить'}</button>
           </div>
         </article>
       ` : '<div class="empty">Премиум пока недоступен.</div>';
@@ -1666,10 +1822,7 @@ async def shop_app() -> str:
       const res = await fetch('/api/v1/marketplace/buy', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-          telegram_id: Number(telegramId),
-          item_id: itemId
-        })
+        body: JSON.stringify({ telegram_id: Number(telegramId), item_id: itemId })
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
@@ -1679,10 +1832,7 @@ async def shop_app() -> str:
       notice.textContent = data.message || 'Готово.';
       await load();
       if (isInventoryType(data.purchase_item_type || '')) {
-        showPurchaseOverlay(
-          'Поздравляем с покупкой',
-          `${data.purchase_title || 'Предмет'} уже находится в вашем профиле, во вкладке Инвентарь.`
-        );
+        showPurchaseOverlay('Поздравляем с покупкой', `${data.purchase_title || 'Предмет'} уже находится в вашем профиле, во вкладке Инвентарь.`);
       }
     }
 
@@ -1695,25 +1845,14 @@ async def shop_app() -> str:
       });
     });
 
-    balanceButton.addEventListener('click', () => {
-      openPanel('balancePanel');
-    });
-
-    profileButton.addEventListener('click', () => {
-      openPanel('profilePanel');
-    });
-
+    balanceButton.addEventListener('click', () => openPanel('balancePanel'));
+    profileButton.addEventListener('click', () => openPanel('profilePanel'));
     entryButton.addEventListener('click', startSystemEntryPayment);
     withdrawStarsButton.addEventListener('click', renderWithdrawCard);
     topUpStarsButton.addEventListener('click', renderTopUpCard);
-    purchaseProfileButton.addEventListener('click', () => {
-      hidePurchaseOverlay();
-      openPanel('profilePanel');
-    });
+    purchaseProfileButton.addEventListener('click', () => { hidePurchaseOverlay(); openPanel('profilePanel'); });
     purchaseCloseButton.addEventListener('click', hidePurchaseOverlay);
-    purchaseOverlay.addEventListener('click', event => {
-      if (event.target === purchaseOverlay) hidePurchaseOverlay();
-    });
+    purchaseOverlay.addEventListener('click', e => { if (e.target === purchaseOverlay) hidePurchaseOverlay(); });
 
     load();
   </script>
