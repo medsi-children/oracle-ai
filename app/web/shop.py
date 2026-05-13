@@ -1186,28 +1186,25 @@ async def shop_app() -> str:
 
     function showAdminPanel() {
       document.body.classList.add('locked');
-      const title = document.createElement('h2');
-      title.textContent = 'Админ-панель ETHOS';
-      const panel = document.createElement('div');
-      panel.className = 'admin-panel';
-      panel.innerHTML = `
-        <p style="font-size: 14px; line-height: 1.6; color: #aaa;">
-          Основные команды доступны в личном чате через /admin.<br><br>
-          <strong>/addcoins</strong> - Начислить псикоины<br>
-          <strong>/grant</strong> - Управлять балансом<br>
-          <strong>/setscore</strong> - Индекс субъектности<br>
-          <strong>/setlifecycle</strong> - Этап доступа<br>
-          <strong>/users</strong> - Список пользователей<br>
-          <strong>/withdrawals</strong> - Заявки на вывод<br><br>
-          Полный справочник: /admin help
-        </p>
+      document.body.classList.remove('entry');
+      
+      lockedView.innerHTML = `
+        <div style="text-align: left;">
+          <h2 style="margin: 0 0 16px 0; font-size: 20px;">Админ-панель ETHOS</h2>
+          <p style="font-size: 14px; line-height: 1.6; color: #aaa; margin: 0;">
+            Основные команды доступны в личном чате через <strong>/admin</strong>.<br><br>
+            <strong>/addcoins</strong> - Начислить псикоины<br>
+            <strong>/grant</strong> - Управлять балансом<br>
+            <strong>/setscore</strong> - Индекс субъектности<br>
+            <strong>/setlifecycle</strong> - Этап доступа<br>
+            <strong>/users</strong> - Список пользователей<br>
+            <strong>/withdrawals</strong> - Заявки на вывод<br><br>
+            Полный справочник: <strong>/admin help</strong>
+          </p>
+        </div>
       `;
-      notice.innerHTML = '';
-      notice.appendChild(title);
-      notice.appendChild(panel);
-      itemsBox.style.display = 'none';
-      premiumBox.style.display = 'none';
     }
+
 
     function showEntry(data) {
       currentState = data;
