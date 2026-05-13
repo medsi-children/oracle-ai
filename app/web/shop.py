@@ -1109,10 +1109,10 @@ async def shop_app() -> str:
 
     function escapeHTML(value) {
       return String(value ?? '').replace(/[&<>"']/g, char => ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
+        '&': '&',
+        '<': '<',
+        '>': '>',
+        '"': '"',
         "'": '&#039;'
       }[char]));
     }
@@ -1189,22 +1189,50 @@ async def shop_app() -> str:
       document.body.classList.remove('entry');
       
       lockedView.innerHTML = `
-        <div style="text-align: left;">
-          <h2 style="margin: 0 0 16px 0; font-size: 20px;">Админ-панель ETHOS</h2>
-          <p style="font-size: 14px; line-height: 1.6; color: #aaa; margin: 0;">
-            Основные команды доступны в личном чате через <strong>/admin</strong>.<br><br>
-            <strong>/addcoins</strong> - Начислить псикоины<br>
-            <strong>/grant</strong> - Управлять балансом<br>
-            <strong>/setscore</strong> - Индекс субъектности<br>
-            <strong>/setlifecycle</strong> - Этап доступа<br>
-            <strong>/users</strong> - Список пользователей<br>
-            <strong>/withdrawals</strong> - Заявки на вывод<br><br>
-            Полный справочник: <strong>/admin help</strong>
+        <div style="max-width: 420px; margin: 0 auto; text-align: left;">
+          <h2 style="margin: 0 0 20px 0; font-size: 22px; text-align: center;">Админ-панель ETHOS</h2>
+          
+          <div style="display: grid; gap: 10px;">
+            <button onclick="copyCommand('/grant <id> <кол-во>')" style="width:100%; padding:14px; border-radius:14px; border:1px solid #ffd3df; background:rgba(255,184,202,.12); color:#ffe9f0; font-weight:700; cursor:pointer;">
+              /grant <id> <кол-во> — начислить псикоины
+            </button>
+            <button onclick="copyCommand('/setscore <id> <0-100>')" style="width:100%; padding:14px; border-radius:14px; border:1px solid #ffd3df; background:rgba(255,184,202,.12); color:#ffe9f0; font-weight:700; cursor:pointer;">
+              /setscore <id> <0-100> — установить индекс
+            </button>
+            <button onclick="copyCommand('/setstatus <id> <статус>')" style="width:100%; padding:14px; border-radius:14px; border:1px solid #ffd3df; background:rgba(255,184,202,.12); color:#ffe9f0; font-weight:700; cursor:pointer;">
+              /setstatus <id> <статус> — изменить статус
+            </button>
+            <button onclick="copyCommand('/setlifecycle <id> <newbie|beginner|follower|admin>')" style="width:100%; padding:14px; border-radius:14px; border:1px solid #ffd3df; background:rgba(255,184,202,.12); color:#ffe9f0; font-weight:700; cursor:pointer;">
+              /setlifecycle <id> <этап> — изменить этап
+            </button>
+            <button onclick="copyCommand('/resetuser <id>')" style="width:100%; padding:14px; border-radius:14px; border:1px solid #ffd3df; background:rgba(255,184,202,.12); color:#ffe9f0; font-weight:700; cursor:pointer;">
+              /resetuser <id> — полный сброс пользователя
+            </button>
+            <button onclick="copyCommand('/users')" style="width:100%; padding:14px; border-radius:14px; border:1px solid #ffd3df; background:rgba(255,184,202,.12); color:#ffe9f0; font-weight:700; cursor:pointer;">
+              /users — список последних пользователей
+            </button>
+          </div>
+          
+          <p style="margin-top: 24px; font-size: 13px; color: #aaa; text-align: center;">
+            Все команды работают в личном чате с ботом.<br>
+            Нажми на команду — она скопируется в буфер обмена.
           </p>
         </div>
       `;
     }
 
+    function copyCommand(cmd) {
+      navigator.clipboard.writeText(cmd).then(() => {
+        const originalText = event.target.innerHTML;
+        event.target.innerHTML = '✅ Скопировано!'
+        setTimeout(() => {
+          if (event.target) event.target.innerHTML = originalText;
+        }, 1200);
+      }).catch(() => {
+        // fallback
+        prompt('Скопируй команду:', cmd);
+      });
+    }
 
     function showEntry(data) {
       currentState = data;
@@ -1348,7 +1376,7 @@ async def shop_app() -> str:
         const data = await fetchState();
         if (data && data.token_balance !== currentState?.token_balance) {
           await load();
-          notice.textContent = 'Псикоины зачислены.';
+          notice.textContent = 'Псикоины зачисщены.';
           return;
         }
       }
@@ -1407,7 +1435,7 @@ async def shop_app() -> str:
                   <img class="coin-icon" src="${icon}" alt="Псикоин" />
                   ${stars * rate}
                 </span>
-              </button>
+            </button>
             `).join('')}
           </div>
         </div>
