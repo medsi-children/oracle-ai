@@ -451,9 +451,9 @@ async def build_onboarding_conclusion(
         "Здесь нет правильных ответов, есть только подлинные. Цель игры — пройти путь трансформации и доказать системе, что ты не просто «эхо» чужих мнений, а самостоятельная единица.\n\n"
         "### В чем разница между Объектом и Субъектом?\n"
         "В этой системе это два фундаментальных статуса:\n"
-        " * **ОБЪЕКТ** (Статус по умолчанию)\n"
+        " * ОБЪЕКТ (Статус по умолчанию)\n"
         "   Это человек-функция. Он действует реактивно: обижается, когда его задели, верит в то, что диктует лента новостей, и использует готовые шаблоны поведения. Объектом легко манипулировать, потому что его реакции предсказуемы. Он — материал для чужих решений.\n"
-        " * **СУБЪЕКТ** (Цель трансформации)\n"
+        " * СУБЪЕКТ (Цель трансформации)\n"
         "   Это человек-автор. Он обладает «внутренним стержнем» и осознанностью. Субъект сам выбирает свою реакцию даже в условиях давления. Он видит манипуляции, берет ответственность за свои ошибки и сохраняет верность своим ценностям (своему «Эху»), даже когда это невыгодно. Он — источник смыслов.\n\n"
         "Ваш следующий шаг — войти в систему ETHOS. Станьте частью сообщества, в котором проводятся ежедневные психологические баттлы, разбираются кейсы, зарабатываются псикоины, которые позднее можно вывести в Телеграм Звезды.\n\n"
         "Открывайте приложение по кнопке внизу и следуйте дальнейшим указаниям. Новый уровень контроля над своей реальностью — в одном клике от вас."
@@ -739,7 +739,6 @@ async def handle_user_text(
             conclusion = await build_onboarding_conclusion(db, user=user, assessments=assessments)
             user.lifecycle_status = "beginner"
             user.profile_summary = conclusion
-            # Add 10 psycoins (task 4)
             user.token_balance += 10
             return conclusion, "onboarding_completed", token_delta + 10, None
 
@@ -847,7 +846,7 @@ async def handle_user_text(
         battle = await get_latest_battle(
             db,
             chat_id=chat_id,
-            statuses={"configuring"},
+            statuses={"configuring"],
             created_by_user_id=user.id,
         )
         if battle is None:
@@ -1023,13 +1022,13 @@ async def handle_user_text(
         return reply, "news_assessment", token_delta, None
 
     if is_group_chat(chat_type):
-        active_battle = await get_latest_battle(db, chat_id=chat_id, statuses={"active"})
+        active_battle = await get_latest_battle(db, chat_id=chat_id, statuses={"active"])
         if active_battle is not None:
             return "Аргумент зафиксирован для текущего баттла.", "battle_argument", 0, None
         active_discussion = await get_latest_discussion(
             db,
             chat_id=chat_id,
-            statuses={"active"},
+            statuses={"active"],
         )
         if active_discussion is not None:
             return "Вклад зафиксирован для текущего обсуждения.", "discussion_argument", 0, None
