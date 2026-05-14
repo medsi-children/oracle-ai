@@ -1278,8 +1278,7 @@ async def shop_app() -> str:
           </div>
           
           <p style="margin-top: 28px; font-size: 13px; color: #aaa; text-align: center; line-height: 1.5;">
-            Нажми на действие → заполни данные → команда скопируется<br>
-            и отправь её в чат боту
+            Нажми на действие → заполни данные → отправь команду чат боту!
           </p>
         </div>
       `;
