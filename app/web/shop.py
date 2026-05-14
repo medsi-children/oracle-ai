@@ -954,7 +954,7 @@ async def shop_app() -> str:
 </head>
 <body>
   <div class="locked-view" id="lockedView">
-    Ты здесь слишком рано. Ты еще не готов. Оракул ожидает тебя в чате
+    Ты здесь слишком рано. Ты еще не готов. Оракул ожидает тебя в чате...
   </div>
   <div class="entry-view" id="entryView">
     <div class="entry-shell">
@@ -1166,7 +1166,7 @@ async def shop_app() -> str:
       seeker: 'Соискатель',
       faithful: 'Верный',
       keeper: 'Хранитель',
-      sighted: 'Зрячий',
+      sighted: 'Видящий',
       subject: 'Субъект'
     };
 
@@ -1335,7 +1335,7 @@ async def shop_app() -> str:
               <option value="seeker">Соискатель</option>
               <option value="faithful">Верный</option>
               <option value="keeper">Хранитель</option>
-              <option value="sighted">Зрячий</option>
+              <option value="sighted">Видящий</option>
               <option value="subject">Субъект</option>
             </select>
           </div>
@@ -1500,7 +1500,7 @@ async def shop_app() -> str:
         return;
       }
       window.open(invoiceUrl, '_blank', 'noopener,noreferrer');
-      notice.textContent = 'Счет открыт в новом окне. После оплаты обновите магазин.';
+      notice.textContent = 'Счет на оплату готов.';
     }
 
     async function waitForFollower() {
@@ -1510,7 +1510,7 @@ async def shop_app() -> str:
         const data = await fetchState();
         if (data?.lifecycle_status === 'follower') {
           currentState = data;
-          entryStatus.textContent = 'Вход подтвержден. Закрытый чат открыт.';
+          entryStatus.textContent = 'Вход подтвержден. Доступ в чат разрешен.';
           entryJoinLink.href = data.closed_group_invite_url;
           entryJoinLink.classList.add('visible');
           if (data.closed_group_invite_url && tg?.openTelegramLink) {
@@ -1519,12 +1519,12 @@ async def shop_app() -> str:
           return;
         }
       }
-      entryStatus.textContent = 'Оплата прошла. Если кнопка чата не появилась, закройте и снова откройте ETHOS через синюю кнопку.';
+      entryStatus.textContent = 'Оплата прошла. Ждем вас в системе ETHOS.';
     }
 
     async function startSystemEntryPayment() {
       if (!telegramId) return;
-      entryStatus.textContent = 'Готовлю счет...';
+      entryStatus.textContent = 'Готовлю оплату...';
       entryButton.disabled = true;
       try {
         const res = await fetch('/api/v1/marketplace/stars/system-entry', {
@@ -1541,14 +1541,14 @@ async def shop_app() -> str:
           return;
         }
         if (!data.invoice_url) {
-          entryStatus.textContent = data.message || 'Вход уже открыт.';
+          entryStatus.textContent = data.message || 'Доступ уже открыт.';
           await load();
           return;
         }
         entryStatus.textContent = data.message;
         openInvoice(data.invoice_url, waitForFollower);
       } catch (error) {
-        entryStatus.textContent = 'Не удалось открыть оплату. Проверьте связь и попробуйте еще раз.';
+        entryStatus.textContent = 'Не удалось совершить оплату. Попробуйте еще раз.';
       } finally {
         entryButton.disabled = false;
       }
@@ -1560,7 +1560,7 @@ async def shop_app() -> str:
         const data = await fetchState();
         if (data && data.token_balance !== currentState?.token_balance) {
           await load();
-          notice.textContent = 'Псикоины зачисщены.';
+          notice.textContent = 'Псикоины добавлены!';
           return;
         }
       }
@@ -1595,7 +1595,7 @@ async def shop_app() -> str:
         `);
         openInvoice(data.invoice_url, refreshAfterPayment);
       } catch (error) {
-        showBalanceCard('Не удалось открыть счет. Проверьте связь и попробуйте еще раз.');
+        showBalanceCard('Не удалось создать счет. Попробуйте еще раз.');
       }
     }
 
@@ -1654,7 +1654,7 @@ async def shop_app() -> str:
                 зарезервированы для вывода в звезды
               </span>
               <span>Сумма к выплате: ${escapeHTML(data.star_amount || '')} ⭐</span>
-              <span>Администратор получил уведомление и обработает вывод вручную.</span>
+              <span>Ожидайте сообщения от Администратора.</span>
             </div>
           `);
         } else {
