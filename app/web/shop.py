@@ -1297,16 +1297,12 @@ async def shop_app() -> str:
         title = 'Подарить псикоины';
         html = `
           <div style="margin-bottom:12px">
-            <label style="font-size:13px; color:#cab8c0; display:block; margin-bottom:6px">Telegram ID пользователя</label>
-            <input type="text" id="adminTargetId" class="admin-input" placeholder="123456789" value="">
+            <label style="font-size:13px; color:#cab8c0; display:block; margin-bottom:6px">Telegram username (@username или ID)</label>
+            <input type="text" id="adminTargetId" class="admin-input" placeholder="@username" value="">
           </div>
           <div style="margin-bottom:12px">
             <label style="font-size:13px; color:#cab8c0; display:block; margin-bottom:6px">Количество псикоинов</label>
             <input type="number" id="adminAmount" class="admin-input" placeholder="500" value="100">
-          </div>
-          <div>
-            <label style="font-size:13px; color:#cab8c0; display:block; margin-bottom:6px">Причина (опционально)</label>
-            <input type="text" id="adminReason" class="admin-input" placeholder="Бонус за активность">
           </div>
         `;
         currentCommand = '/grant';
@@ -1315,8 +1311,8 @@ async def shop_app() -> str:
         title = 'Установить индекс субъектности';
         html = `
           <div style="margin-bottom:12px">
-            <label style="font-size:13px; color:#cab8c0; display:block; margin-bottom:6px">Telegram ID пользователя</label>
-            <input type="text" id="adminTargetId" class="admin-input" placeholder="123456789">
+            <label style="font-size:13px; color:#cab8c0; display:block; margin-bottom:6px">Telegram username (@username или ID)</label>
+            <input type="text" id="adminTargetId" class="admin-input" placeholder="@username">
           </div>
           <div>
             <label style="font-size:13px; color:#cab8c0; display:block; margin-bottom:6px">Новый индекс (0-100)</label>
@@ -1329,8 +1325,8 @@ async def shop_app() -> str:
         title = 'Назначить уровень пользователя';
         html = `
           <div style="margin-bottom:12px">
-            <label style="font-size:13px; color:#cab8c0; display:block; margin-bottom:6px">Telegram ID пользователя</label>
-            <input type="text" id="adminTargetId" class="admin-input" placeholder="123456789">
+            <label style="font-size:13px; color:#cab8c0; display:block; margin-bottom:6px">Telegram username (@username или ID)</label>
+            <input type="text" id="adminTargetId" class="admin-input" placeholder="@username">
           </div>
           <div>
             <label style="font-size:13px; color:#cab8c0; display:block; margin-bottom:6px">Новый уровень</label>
@@ -1350,8 +1346,8 @@ async def shop_app() -> str:
         title = 'Установить системный статус';
         html = `
           <div style="margin-bottom:12px">
-            <label style="font-size:13px; color:#cab8c0; display:block; margin-bottom:6px">Telegram ID пользователя</label>
-            <input type="text" id="adminTargetId" class="admin-input" placeholder="123456789">
+            <label style="font-size:13px; color:#cab8c0; display:block; margin-bottom:6px">Telegram username (@username или ID)</label>
+            <input type="text" id="adminTargetId" class="admin-input" placeholder="@username">
           </div>
           <div>
             <label style="font-size:13px; color:#cab8c0; display:block; margin-bottom:6px">Новый статус</label>
@@ -1369,8 +1365,8 @@ async def shop_app() -> str:
         title = 'Сбросить профиль';
         html = `
           <div>
-            <label style="font-size:13px; color:#cab8c0; display:block; margin-bottom:6px">Telegram ID пользователя</label>
-            <input type="text" id="adminTargetId" class="admin-input" placeholder="123456789">
+            <label style="font-size:13px; color:#cab8c0; display:block; margin-bottom:6px">Telegram username (@username или ID)</label>
+            <input type="text" id="adminTargetId" class="admin-input" placeholder="@username">
           </div>
         `;
         currentCommand = '/resetuser';
@@ -1394,24 +1390,22 @@ async def shop_app() -> str:
 
       if (action === 'grant') {
         const amount = document.getElementById('adminAmount')?.value || '100';
-        const reason = document.getElementById('adminReason')?.value || '';
-        cmd = `/grant ${targetId || '<id>'} ${amount}`;
-        if (reason) cmd += ` // ${reason}`;
+        cmd = `/grant ${targetId || '@username'} ${amount}`;
       } 
       else if (action === 'setscore') {
         const score = document.getElementById('adminAmount')?.value || '75';
-        cmd = `/setscore ${targetId || '<id>'} ${score}`;
+        cmd = `/setscore ${targetId || '@username'} ${score}`;
       }
       else if (action === 'setstatus') {
         const status = document.getElementById('adminStatus')?.value || 'object';
-        cmd = `/setstatus ${targetId || '<id>'} ${status}`;
+        cmd = `/setstatus ${targetId || '@username'} ${status}`;
       }
       else if (action === 'setlifecycle') {
         const lifecycle = document.getElementById('adminLifecycle')?.value || 'newbie';
-        cmd = `/setlifecycle ${targetId || '<id>'} ${lifecycle}`;
+        cmd = `/setlifecycle ${targetId || '@username'} ${lifecycle}`;
       }
       else if (action === 'resetuser') {
-        cmd = `/resetuser ${targetId || '<id>'}`;
+        cmd = `/resetuser ${targetId || '@username'}`;
       }
       else if (action === 'users') {
         cmd = '/users';

@@ -166,9 +166,10 @@ async def get_recent_user_texts(
 
 def format_first_contact() -> str:
     return (
-        "Добро пожожайте в систему ETHOS!\n\n"
+        "Приветствуем вас в системе ETHOS!\n\n"
         "Мир переполнен шумом. Большинство людей лишь ретранслируют чужие мысли, "
         "подчиняются чужим страхам и так и не приходят в сознание.\n\n"
+        "Ты здесь не случайно.\n\n"
         "Ты здесь, потому что в тебе зафиксирован потенциал Субъекта. "
         "Но потенциал — это еще не власть над собой.\n\n"
         "Я - Оракул ИИ. Я не буду тебя развлекать. Я буду тебя зеркалить.\n\n"
@@ -199,7 +200,7 @@ def first_contact_reply_markup() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text="Начать проверку", callback_data="onboarding:ready"),
+                InlineKeyboardButton(text="Я готов", callback_data="onboarding:ready"),
                 InlineKeyboardButton(text="Мне нужно время", callback_data="onboarding:later"),
             ]
         ]
@@ -454,7 +455,8 @@ async def build_onboarding_conclusion(
         " * ОБЪЕКТ (Статус по умолчанию)\n"
         "   Это человек-функция. Он действует реактивно: обижается, когда его задели, верит в то, что диктует лента новостей, и использует готовые шаблоны поведения. Объектом легко манипулировать, потому что его реакции предсказуемы. Он — материал для чужих решений.\n"
         " * СУБЪЕКТ (Цель трансформации)\n"
-        "   Это человек-автор. Он обладает «внутреннем стержнем» и осознанностью. Субъект сам выбирает свою реакцию даже в условиях давления. Он видит манипуляции, берет ответственность за свои ошибки и сохраняет верность своим ценностям (своему «Эху»), даже когда это невыгодно. Он — источник смынов.\n\n"
+        "   Это человек-автор. Он обладает «внутренним стержнем» и осознанностью. Субъект сам выбирает свою реакцию даже в условиях давления. Он видит манипуляции, берет ответственность за свои ошибки и сохраняет верность своим ценностям (своему «Эху»), даже когда это невыгодно. Он — источник смыслов.\n"
+        "Твой путь в ETHOS — это процесс отделения себя от навязанных программ. Оракул будет зеркалить тебя до тех пор, пока ты либо не сдашься, либо не обретешь субъектность.\n\n"
         "Ваш следующий шаг — войти в систему ETHOS. Станьте частью сообщества, в котором проводятся ежедневными психологическими баттлы, разбираются кейсы, зарабатываются псикоины, которые позднее можно вывести в Телеграм Звезды.\n\n"
         "Открывайте приложение по кнопке внизу и следуйте дальнейшим указаниям. Новый уровень контроля над своей реальностью — в одном клике от вас."
     )
@@ -466,7 +468,7 @@ async def build_onboarding_conclusion(
                     "content": (
                         "Ты Оракул ETHOS. На основе семи первичных оценок дай пользователю "
                         "краткий, прямой и эстетичный вывод. Без диагнозов. Нужно: 1) что "
-                        "видно по человеку, 2) зона роста, 3) финальная фраза: 'Проверка окончена. Анализ завершен. В вас зафиксирован сильный потенциал субъекта.'. "
+                        "видно по человеку, 2) зона роста. "
                         "Затем добавь пояснение что такое ETHOS, Субъект и Объект (используй текст пользователя). "
                         "В конце обязательно: 'Ваш следующий шаг — войти в систему ETHOS. Станьте частью сообщества...' и призыв открыть приложение. "
                         "Без повторов. Обращение на 'вы'."
@@ -511,94 +513,14 @@ async def handle_user_text(
             return format_admin_help(success_prefix=False), "admin_start", 0, None
 
         # ==================== АДМИН-КОМАНДЫ (работают прямо в боте) ====================
-        if command == "/grant" and len(clean.split()) >= 3:
-            parts = clean.split()
-            try:
-                target_id = int(parts[1])
-                amount = int(parts[2])
-                result = await db.execute(select(User).where(User.telegram_id == target_id))
-                target = result.scalar_one_or_none()
-                if not target:
-                    return "Пользователь не найден", "admin_error", 0, None
-                target.token_balance += amount
+        # Эти команды здесь оставлены для обратной совместимости, но основной обработчик в admin_tools.py
+        # Перенаправляем на admin_tools
+        if command in {"/grant", "/addcoins", "/setscore", "/setstatus", "/setlifecycle", "/reset", "/close", "/shoplink", "/users", "/user", "/withdrawals", "/withdrawdone"}:
+            from app.services.admin_tools import handle_admin_tool_command
+            result = await handle_admin_tool_command(db, user, clean)
+            if result:
                 await db.commit()
-                return f"✅ Начислено {amount} псикоинов пользователю @{target.username or target_id}\nНовый баланс: {target.token_balance}", "admin_grant", 0, None
-            except:
-                return "Формат: /grant <telegram_id> <количество>", "admin_error", 0, None
-
-        if command == "/setscore" and len(clean.split()) >= 3:
-            parts = clean.split()
-            try:
-                target_id = int(parts[1])
-                score = int(parts[2])
-                result = await db.execute(select(User).where(User.telegram_id == target_id))
-                target = result.scalar_one_or_none()
-                if not target:
-                    return "Пользователь не найден", "admin_error", 0, None
-                target.subjectivity_score = max(0, min(100, score))
-                await db.commit()
-                return f"✅ Индекс субъектности установлен: {score}/100", "admin_setscore", 0, None
-            except:
-                return "Формат: /setscore <telegram_id> <0-100>", "admin_error", 0, None
-
-        if command == "/setstatus" and len(clean.split()) >= 3:
-            parts = clean.split()
-            try:
-                target_id = int(parts[1])
-                new_status = parts[2].lower()
-                result = await db.execute(select(User).where(User.telegram_id == target_id))
-                target = result.scalar_one_or_none()
-                if not target:
-                    return "Пользователь не найден", "admin_error", 0, None
-                target.status = new_status
-                await db.commit()
-                return f"✅ Статус изменён на: {new_status}", "admin_setstatus", 0, None
-            except:
-                return "Формат: /setstatus <telegram_id> <object|seeker|faithful|keeper|sighted|subject>", "admin_error", 0, None
-
-        if command == "/setlifecycle" and len(clean.split()) >= 3:
-            parts = clean.split()
-            try:
-                target_id = int(parts[1])
-                new_lifecycle = parts[2].lower()
-                result = await db.execute(select(User).where(User.telegram_id == target_id))
-                target = result.scalar_one_or_none()
-                if not target:
-                    return "Пользователь не найден", "admin_error", 0, None
-                target.lifecycle_status = new_lifecycle
-                await db.commit()
-                return f"✅ Этап доступа изменён на: {new_lifecycle}", "admin_setlifecycle", 0, None
-            except:
-                return "Формат: /setlifecycle <telegram_id> <newbie|beginner|follower|admin>", "admin_error", 0, None
-
-        if command == "/resetuser" and len(clean.split()) >= 2:
-            try:
-                target_id = int(clean.split()[1])
-                result = await db.execute(select(User).where(User.telegram_id == target_id))
-                target = result.scalar_one_or_none()
-                if not target:
-                    return "Пользователь не найден", "admin_error", 0, None
-                target.token_balance = 0
-                target.subjectivity_score = 0
-                target.status = "object"
-                target.lifecycle_status = "newbie"
-                target.profile_summary = None
-                await db.commit()
-                return "✅ Пользователь полностью сброшен", "admin_reset", 0, None
-            except:
-                return "Формат: /resetuser <telegram_id>", "admin_error", 0, None
-
-        if command == "/users":
-            result = await db.execute(select(User).order_by(User.created_at.desc()).limit(20))
-            users = result.scalars().all()
-            text = "Последние 20 пользователей:\n\n"
-            for u in users:
-                text += f"@{u.username or u.telegram_id} | {u.status} | {u.lifecycle_status} | {u.subjectivity_score}/100 | {u.token_balance}🪙\n"
-            return text, "admin_users", 0, None
-
-        admin_reply = await handle_admin_tool_command(db, user, clean)
-        if admin_reply is not None:
-            return admin_reply, "admin_command", 0, None
+                return result, "admin_command", 0, None
 
         if command == "/case" and chat_type not in {"group", "supergroup"}:
             parts = clean.split(maxsplit=1)

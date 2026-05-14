@@ -154,9 +154,9 @@ async def reset_command(db: AsyncSession, clean: str, *, admin: User) -> str:
 
 
 async def grant_command(db: AsyncSession, clean: str) -> str:
-    parts = clean.split(maxsplit=3)
+    parts = clean.split(maxsplit=2)
     if len(parts) < 3:
-        return format_admin_error("Формат: /grant @username 10 причина")
+        return format_admin_error("Формат: /grant @username 10")
 
     target = await find_user_for_reset(db, parts[1])
     if target is None:
@@ -164,16 +164,15 @@ async def grant_command(db: AsyncSession, clean: str) -> str:
     try:
         amount = int(parts[2])
     except ValueError:
-        return format_admin_error("Сумма должна быть целым числом, например: /grant @user 10 тест")
+        return format_admin_error("Сумма должна быть целым числом, например: /grant @user 10")
 
-    reason = parts[3].strip() if len(parts) > 3 else "Admin balance adjustment"
     target.token_balance = max(0, target.token_balance + amount)
     target.status = calculate_status(target.subjectivity_score, target.token_balance)
     db.add(
         TokenLedgerEntry(
             user_id=target.id,
             amount=amount,
-            reason=f"Admin: {reason}",
+            reason=f"Admin: мануальная настройка",
         )
     )
     return format_admin_success(

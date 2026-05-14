@@ -13,7 +13,7 @@ def test_first_contact_markup_has_two_clear_choices() -> None:
     markup = first_contact_reply_markup()
     texts = [button.text for row in markup.inline_keyboard for button in row]
 
-    assert texts == ["Начать проверку", "Мне нужно время"]
+    assert texts == ["Я готов", "Мне нужно время"]
 
 
 def test_onboarding_required_reply_points_to_start() -> None:
