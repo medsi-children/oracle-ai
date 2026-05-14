@@ -943,7 +943,7 @@ async def handle_solo_game_turn(
         store_solo_agent_turn(session, user_text=text, agent_reply=agent_reply)
         session.state = f"solo:{action}:2"
         return (
-            f"{agent_reply}\n\nВторой слой: {build_probe_question(text, implicit)}\n\n"
+            f"{agent_reply}\n\nВопрос от Оракула: {build_probe_question(text, implicit)}\n\n"
             "Ваш финальный ход?",
             f"solo_{action}_agent_reply",
             0,
@@ -1625,7 +1625,7 @@ async def handle_user_text(
         if step == "1":
             session.state = f"news:{item.id}:2"
             return (
-                "Позиция принята. Второй слой: отдели факт от реакции.\n\n"
+                "Позиция принята. Теперь отдели факт от своей реакции.\n\n"
                 + build_probe_question(clean, implicit),
                 "news_probe",
                 0,
