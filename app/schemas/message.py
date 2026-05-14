@@ -36,6 +36,10 @@ class MessageResponse(BaseModel):
     subjectivity_score: int | None = None
     reply_markup: InlineKeyboardMarkup | None = None
     intro_animation: list[ChatAnimationStep] | None = None
+
+    loading_message: str | None = None
+    loading_parse_mode: str | None = "Markdown"
+
     suppress_reply: bool = False
 
     @computed_field
