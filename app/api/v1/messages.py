@@ -48,4 +48,9 @@ async def create_message(payload: MessageCreate, db: AsyncSession = Depends(get_
         intro_animation=first_contact_intro_animation()
         if mode == "onboarding_start"
         else None,
+        loading_message=(
+            "```markdown\nВаши ответы анализируются...\n\nОракул оценивает уровень субъектности.\n```"
+            if mode == "onboarding_complete"
+            else None
+        ),
     )
