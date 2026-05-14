@@ -15,8 +15,9 @@ from app.models.user import User
 from app.services.assessment import calculate_status, score_text_locally
 from app.services.battles import user_public_name
 from app.services.llm import extract_json_object, openrouter_chat
+from app.services.phrasing import psycoins
 
-DISCUSSION_ENTRY_OPTIONS = [1, 3, 5, 10]
+DISCUSSION_ENTRY_OPTIONS = [1, 3, 5, 10, 50, 100]
 
 
 async def create_case_discussion(
@@ -122,7 +123,7 @@ async def join_discussion(
     if user.token_balance < entry_fee:
         return (
             False,
-            f"Для входа нужно {entry_fee} псикоинов. Сейчас у вас {user.token_balance}.",
+            f"Для входа нужно {psycoins(entry_fee)}. Сейчас у вас {psycoins(user.token_balance)}.",
         )
 
     user.token_balance -= entry_fee
@@ -144,7 +145,7 @@ async def join_discussion(
     await db.flush()
     return (
         True,
-        f"Участие принято: {entry_fee} псикоинов.\n\n"
+        f"Участие принято: {psycoins(entry_fee)}.\n\n"
         "Теперь напишите позицию прямо в чат. Оракул учтет только сообщения участников.",
     )
 
@@ -342,7 +343,7 @@ async def finish_discussion(
                 reason=f"PsyCoin discussion rank {rank} award: {discussion.id}",
             )
         )
-        winners.append(f"{rank}. {user_public_name(user)}: +{award} псикоинов")
+        winners.append(f"{rank}. {user_public_name(user)}: +{psycoins(award)}")
 
     for participant, user in participant_rows:
         participant.score = int(verdict["scores"].get(str(user.id), participant.score))

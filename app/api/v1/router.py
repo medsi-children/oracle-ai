@@ -22,7 +22,7 @@ api_router.include_router(users.router, prefix="/users", tags=["users"])
 
 @api_router.post("/daily/send-morning-case", tags=["daily"])
 async def trigger_morning_case():
-    """Trigger daily morning case send (call this from cron/scheduler at 10:00 CET)"""
+    """Trigger the daily morning question manually; the app scheduler runs it at 10:00."""
     from app.services.daily_tasks import send_morning_case_to_all_users
     result = await send_morning_case_to_all_users()
     return {"status": "ok", "sent_to": result}

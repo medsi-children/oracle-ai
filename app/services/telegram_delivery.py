@@ -80,7 +80,14 @@ async def answer_callback_query(update: dict[str, Any]) -> None:
     if callback_id is None:
         return
     try:
-        await telegram_api("answerCallbackQuery", {"callback_query_id": callback_id})
+        await telegram_api(
+            "answerCallbackQuery",
+            {
+                "callback_query_id": callback_id,
+                "text": "Принято",
+                "cache_time": 0,
+            },
+        )
     except TelegramStarsError:
         logger.exception("Failed to answer callback query")
 

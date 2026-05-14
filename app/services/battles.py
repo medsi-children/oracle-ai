@@ -14,6 +14,7 @@ from app.models.token import TokenLedgerEntry
 from app.models.user import User
 from app.services.assessment import calculate_status, score_text_locally
 from app.services.llm import extract_json_object, openrouter_chat
+from app.services.phrasing import psycoins
 
 BATTLE_ENTRY_OPTIONS = [1, 3, 5, 10, 50, 100]
 COLLECTIBLE_BATTLE_BUFFS = {
@@ -210,7 +211,7 @@ async def choose_battle_entry_fee(
     if user.token_balance < entry_fee:
         return (
             False,
-            f"Для этого уровня нужно {entry_fee} псикоинов. Сейчас у вас {user.token_balance}.",
+            f"Для этого уровня нужно {psycoins(entry_fee)}. Сейчас у вас {psycoins(user.token_balance)}.",
         )
 
     user.token_balance -= entry_fee
@@ -241,7 +242,7 @@ def format_battle_waiting_message(battle: Battle) -> str:
     return (
         "Баттл настроен.\n\n"
         f"Тема: {battle.topic}\n\n"
-        f"Уровень участия: {battle.entry_fee} псикоинов.\n"
+        f"Уровень участия: {psycoins(battle.entry_fee)}.\n"
         "Победитель получает возврат взноса и такую же награду от системы.\n\n"
         "Коллекционные трофеи дают мягкий бафф к оценке: применяется самый сильный, "
         "максимум +18%.\n\n"
@@ -279,7 +280,7 @@ async def join_waiting_battle(
     if user.token_balance < entry_fee:
         return (
             battle,
-            f"Для входа нужно {entry_fee} псикоинов. Сейчас у вас {user.token_balance}.",
+            f"Для входа нужно {psycoins(entry_fee)}. Сейчас у вас {psycoins(user.token_balance)}.",
         )
 
     user.token_balance -= entry_fee
@@ -306,7 +307,7 @@ async def join_waiting_battle(
         battle,
         "Баттл начат.\n\n"
         f"Тема: {battle.topic}\n\n"
-        f"Уровень участия: {entry_fee} псикоинов.\n"
+        f"Уровень участия: {psycoins(entry_fee)}.\n"
         "Пишите аргументы прямо в чат. Когда позиции раскрыты, завершите баттл.\n\n"
         "Если у участника есть коллекционный трофей, Оракул покажет его бафф в финальном счете.",
     )
@@ -511,8 +512,8 @@ async def finish_active_battle(
         "Баттл завершен.\n\n"
         f"Тема: {battle.topic}\n\n"
         f"Победитель: {user_public_name(winner)}\n"
-        f"Возврат взноса: {winner_return} псикоинов\n"
-        f"Награда системы: {winner_reward} псикоинов\n\n"
+        f"Возврат взноса: {psycoins(winner_return)}\n"
+        f"Награда системы: {psycoins(winner_reward)}\n\n"
         f"{verdict['summary']}\n\n"
         "Оценки:\n"
         + "\n".join(

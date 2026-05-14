@@ -12,9 +12,11 @@ def admin_ids() -> set[int]:
 
 
 def is_admin(user: User) -> bool:
-    if user.telegram_id in admin_ids():
+    telegram_id = getattr(user, "telegram_id", None)
+    username = getattr(user, "username", None)
+    if telegram_id in admin_ids():
         return True
-    return (user.username or "").lower() == settings.admin_telegram_username.lower()
+    return (username or "").lower() == settings.admin_telegram_username.lower()
 
 
 def normalize_username(value: str) -> str:

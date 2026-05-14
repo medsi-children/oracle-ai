@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     psycoin_per_star: int = 5
     psycoin_withdraw_min: int = 1000
     star_exchange_enabled: bool = True
+    daily_morning_scheduler_enabled: bool = True
+    daily_morning_hour: int = 10
+    daily_morning_minute: int = 0
+    daily_morning_timezone: str = "Europe/Moscow"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
