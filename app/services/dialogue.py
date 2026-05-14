@@ -837,12 +837,9 @@ async def handle_user_text(
         battle = await create_battle(db, user=user, chat_id=chat_id, topic=topic)
         return (
             "Баттл открыт.\n\n"
-            f"ID: {battle.id}\n"
-            "Режим: группа\n\n"
-            f"Тема: {battle.topic}\n\n"
-            "Выберите уровень участия. Победитель получит возврат своего взноса "
-            "и такую же награду от системы.\n\n"
-            "Если кнопки не появились, отправьте: /battlefee 10",
+            f"{battle.topic}\n\n"
+            "Внесите псикоины для участия. Победитель получает свои псикоины обратно, "
+            "а также награду от системы.\n\n"
             "battle_configuring",
             0,
             battle_fee_reply_markup(battle.id),
