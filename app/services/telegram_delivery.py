@@ -110,6 +110,27 @@ async def send_message(
         payload["parse_mode"] = parse_mode
     return await telegram_api("sendMessage", payload)
 
+async def delete_message(*, chat_id: int, message_id: int) -> None:
+
+    try:
+
+        await telegram_api(
+
+            "deleteMessage",
+
+            {
+
+                "chat_id": chat_id,
+
+                "message_id": message_id,
+
+            },
+
+        )
+
+    except TelegramStarsError:
+
+        logger.exception("Failed to delete telegram message")
 
 async def play_intro_animation(chat_id: int, response: MessageResponse) -> None:
     intro = response.intro_animation or []
@@ -161,23 +182,49 @@ async def send_telegram_response(
 ) -> None:
     if answer_callback:
         await answer_callback_query(update)
+
     if response.suppress_reply:
         return
+
     chat_id = extract_chat_id(update)
+
     if chat_id is None:
         logger.warning("Telegram response has no chat_id; mode=%s", response.mode)
         return
 
     await play_intro_animation(chat_id, response)
+
+    loading_message_id = None
+
+    if response.loading_message:
+        loading_response = await send_message(
+            chat_id=chat_id,
+            text=response.loading_message,
+            parse_mode=response.loading_parse_mode,
+        )
+
+        loading_result = loading_response.get("result") or {}
+        loading_message_id = loading_result.get("message_id")
+
     chunks = split_telegram_text(response.reply)
+
     if not chunks:
         return
+
+    if loading_message_id is not None:
+        await delete_message(
+            chat_id=chat_id,
+            message_id=loading_message_id,
+        )
+
     reply_markup = to_telegram_reply_markup(response.reply_markup)
+
     for index, chunk in enumerate(chunks):
         await send_message(
             chat_id=chat_id,
             text=chunk,
             reply_markup=reply_markup if index == len(chunks) - 1 else None,
+            parse_mode="HTML",
         )
 
 
