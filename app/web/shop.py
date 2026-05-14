@@ -1531,7 +1531,7 @@ async def shop_app() -> str:
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({
             telegram_id: Number(telegramId),
-            star_amount: currentState?.system_entry_star_price || 50
+            star_amount: currentState?.system_entry_star_price || 1
           })
         });
         const data = await res.json();
