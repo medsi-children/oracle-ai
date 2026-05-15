@@ -30,7 +30,7 @@ async def shop_app() -> str:
       --accent: #ffc8d8;
       --accent-strong: #f5a9c0;
       --accent-deep: #d45f8b;
-      --coin: #d89a3d;
+      --coin: #edc46b;
       --shadow: 0 18px 50px rgba(72, 84, 102, .12);
     }
     * { box-sizing: border-box; }
