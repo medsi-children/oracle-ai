@@ -26,6 +26,7 @@ from app.services.assessment import (
     calculate_onboarding_initial_score,
     calculate_status,
     create_assessment,
+    extract_profile_summary,
 )
 from app.services.ai_agent import generate_ai_agent_reply
 from app.services.battles import (
@@ -1377,7 +1378,7 @@ async def handle_user_text(
             user.status = calculate_status(user.subjectivity_score, user.token_balance)
             conclusion = await build_onboarding_conclusion(db, user=user, assessments=assessments)
             user.lifecycle_status = "beginner"
-            user.profile_summary = conclusion
+            user.profile_summary = extract_profile_summary(conclusion)
             user.token_balance += 10
             return conclusion, "onboarding_completed", token_delta + 10, None
 
