@@ -27,10 +27,10 @@ async def shop_app() -> str:
       --line: rgba(116, 130, 148, .18);
       --text: #20242c;
       --text-soft: #68717d;
-      --accent: #eeb9c5;
-      --accent-strong: #d993a7;
-      --accent-deep: #9f5f72;
-      --coin: #9b7244;
+      --accent: #ffc8d8;
+      --accent-strong: #f5a9c0;
+      --accent-deep: #d45f8b;
+      --coin: #d89a3d;
       --shadow: 0 18px 50px rgba(72, 84, 102, .12);
     }
     * { box-sizing: border-box; }
@@ -39,7 +39,7 @@ async def shop_app() -> str:
       min-height: 100vh;
       color: var(--text);
       background:
-        radial-gradient(circle at 16% 0%, rgba(238, 185, 197, .18), transparent 30%),
+        radial-gradient(circle at 16% 0%, rgba(255, 200, 216, .24), transparent 30%),
         radial-gradient(circle at 88% 18%, rgba(179, 202, 221, .22), transparent 30%),
         linear-gradient(180deg, var(--bg-1), var(--bg-2) 74%);
       overflow-x: hidden;
@@ -61,7 +61,7 @@ async def shop_app() -> str:
     }
     body::after {
       background:
-        linear-gradient(120deg, transparent, rgba(217, 147, 167, .08), transparent);
+        linear-gradient(120deg, transparent, rgba(245, 169, 192, .12), transparent);
       transform: translateX(-120%);
       animation: veil 13s ease-in-out infinite;
       opacity: .22;
@@ -130,7 +130,7 @@ async def shop_app() -> str:
       font: inherit;
     }
     .balance:hover {
-      border-color: rgba(159, 95, 114, .28);
+      border-color: rgba(212, 95, 139, .28);
       transform: translateY(-1px);
     }
     .profile-button {
@@ -151,7 +151,7 @@ async def shop_app() -> str:
     }
     .profile-button:hover {
       transform: translateY(-1px);
-      border-color: rgba(159, 95, 114, .28);
+      border-color: rgba(212, 95, 139, .28);
     }
     .profile-glyph {
       width: 22px;
@@ -203,7 +203,7 @@ async def shop_app() -> str:
       font-weight: 800;
       letter-spacing: 0;
       text-shadow:
-        0 0 18px rgba(155, 114, 68, .12),
+        0 0 18px rgba(216, 154, 61, .14),
         0 1px 0 rgba(255, 255, 255, .18);
     }
     .vip-icon {
@@ -245,13 +245,13 @@ async def shop_app() -> str:
     }
     .tab:hover, .buy:hover {
       transform: translateY(-1px);
-      border-color: rgba(159, 95, 114, .22);
+      border-color: rgba(212, 95, 139, .22);
       box-shadow: 0 10px 24px rgba(72, 84, 102, .1);
     }
     .tab.active {
       color: #fff;
       background: linear-gradient(135deg, var(--accent-deep), var(--accent-strong));
-      border-color: rgba(159, 95, 114, .34);
+      border-color: rgba(212, 95, 139, .34);
     }
     .notice {
       min-height: 22px;
@@ -325,7 +325,7 @@ async def shop_app() -> str:
       50% {
         transform: scale(1.025);
         box-shadow:
-          0 0 0 10px rgba(217, 147, 167, 0),
+          0 0 0 10px rgba(245, 169, 192, 0),
           0 16px 30px rgba(72, 84, 102, .12);
       }
     }
@@ -358,12 +358,12 @@ async def shop_app() -> str:
       white-space: nowrap;
       background: rgba(255, 255, 255, .64);
     }
-    .badge.collectible { color: #8a6842; }
-    .badge.recommendation { color: #8f6470; }
+    .badge.collectible { color: #b8863f; }
+    .badge.recommendation { color: #c76c98; }
     .badge.privilege { color: var(--accent-deep); }
     .badge.owned {
-      color: #7c6040;
-      border-color: rgba(155, 114, 68, .18);
+      color: #a57836;
+      border-color: rgba(216, 154, 61, .18);
       background: rgba(245, 237, 221, .56);
     }
     .item p, .profile-copy, .premium-copy {
@@ -394,7 +394,7 @@ async def shop_app() -> str:
       padding: 0 18px;
       background: rgba(255, 255, 255, .72);
       color: var(--accent-deep);
-      border-color: rgba(159, 95, 114, .2);
+      border-color: rgba(212, 95, 139, .2);
     }
     .buy:disabled {
       opacity: .45;
@@ -422,7 +422,7 @@ async def shop_app() -> str:
       place-items: center;
       border-radius: 999px;
       background:
-        radial-gradient(circle, rgba(217, 147, 167, .12), rgba(217, 147, 167, 0) 62%);
+        radial-gradient(circle, rgba(245, 169, 192, .14), rgba(245, 169, 192, 0) 62%);
       animation: aura 7s ease-in-out infinite;
     }
     .sphere-image {
@@ -432,7 +432,7 @@ async def shop_app() -> str:
       border-radius: 999px;
       border: 1px solid var(--line);
       box-shadow:
-        0 0 0 0 rgba(217, 147, 167, .14),
+        0 0 0 0 rgba(245, 169, 192, .16),
         0 20px 44px rgba(72, 84, 102, .14);
       animation: spherePulse 5.6s ease-in-out infinite;
       opacity: 0;
@@ -446,13 +446,13 @@ async def shop_app() -> str:
       0%, 100% {
         transform: scale(1);
         box-shadow:
-          0 0 0 0 rgba(217, 147, 167, .14),
+          0 0 0 0 rgba(245, 169, 192, .16),
           0 20px 44px rgba(72, 84, 102, .14);
       }
       50% {
         transform: scale(1.04);
         box-shadow:
-          0 0 0 18px rgba(217, 147, 167, 0),
+          0 0 0 18px rgba(245, 169, 192, 0),
           0 24px 52px rgba(72, 84, 102, .16);
       }
     }
@@ -487,7 +487,7 @@ async def shop_app() -> str:
       place-items: center;
       border-radius: 999px;
       background:
-        radial-gradient(circle, rgba(155, 114, 68, .11), rgba(155, 114, 68, 0) 62%);
+        radial-gradient(circle, rgba(216, 154, 61, .12), rgba(216, 154, 61, 0) 62%);
       animation: aura 7s ease-in-out infinite;
     }
     .wallet-coin {
@@ -579,7 +579,7 @@ async def shop_app() -> str:
       padding: 8px 12px;
       border-radius: 999px;
       background: rgba(238, 185, 197, .28);
-      border: 1px solid rgba(159, 95, 114, .18);
+      border: 1px solid rgba(212, 95, 139, .18);
       color: var(--accent-deep);
       font-size: 13px;
     }
@@ -723,7 +723,7 @@ async def shop_app() -> str:
       position: relative;
       overflow: hidden;
       background:
-        linear-gradient(110deg, rgba(255, 255, 255, .44) 20%, rgba(217, 147, 167, .12) 36%, rgba(255, 255, 255, .44) 52%),
+        linear-gradient(110deg, rgba(255, 255, 255, .44) 20%, rgba(245, 169, 192, .14) 36%, rgba(255, 255, 255, .44) 52%),
         radial-gradient(circle at 30% 30%, rgba(255,255,255,.5), transparent 52%),
         linear-gradient(180deg, rgba(255, 255, 255, .95), rgba(238, 244, 248, .98));
       background-size: 220% 100%, auto, auto;
@@ -801,7 +801,7 @@ async def shop_app() -> str:
       place-items: center;
       border-radius: 999px;
       background:
-        radial-gradient(circle, rgba(217, 147, 167, .13), rgba(217, 147, 167, 0) 64%);
+        radial-gradient(circle, rgba(245, 169, 192, .16), rgba(245, 169, 192, 0) 64%);
       animation: aura 7s ease-in-out infinite;
     }
     .entry-image {
@@ -811,7 +811,7 @@ async def shop_app() -> str:
       border-radius: 22px;
       border: 1px solid var(--line);
       box-shadow:
-        0 0 0 0 rgba(217, 147, 167, .16),
+        0 0 0 0 rgba(245, 169, 192, .18),
         0 22px 54px rgba(72, 84, 102, .16);
       animation: spherePulse 5.6s ease-in-out infinite;
     }
