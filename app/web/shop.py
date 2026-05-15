@@ -20,18 +20,18 @@ async def shop_app() -> str:
     :root {
       color-scheme: light;
       font-family: "Avenir Next", "Helvetica Neue", system-ui, sans-serif;
-      --bg-1: #fff8fb;
-      --bg-2: #f7fbff;
-      --panel: rgba(255, 255, 255, .78);
-      --panel-strong: rgba(255, 255, 255, .94);
-      --line: rgba(183, 96, 130, .18);
-      --text: #241821;
-      --text-soft: #6f5d68;
-      --accent: #f4a8bf;
-      --accent-strong: #ff7fa5;
-      --accent-deep: #a94e70;
-      --coin: #b86f1d;
-      --shadow: 0 22px 60px rgba(151, 82, 112, .16);
+      --bg-1: #fbfafc;
+      --bg-2: #eef4f8;
+      --panel: rgba(255, 255, 255, .74);
+      --panel-strong: rgba(255, 255, 255, .9);
+      --line: rgba(116, 130, 148, .18);
+      --text: #20242c;
+      --text-soft: #68717d;
+      --accent: #eeb9c5;
+      --accent-strong: #d993a7;
+      --accent-deep: #9f5f72;
+      --coin: #9b7244;
+      --shadow: 0 18px 50px rgba(72, 84, 102, .12);
     }
     * { box-sizing: border-box; }
     body {
@@ -39,8 +39,8 @@ async def shop_app() -> str:
       min-height: 100vh;
       color: var(--text);
       background:
-        radial-gradient(circle at top, rgba(255, 143, 177, .22), transparent 30%),
-        radial-gradient(circle at 78% 22%, rgba(166, 196, 226, .22), transparent 26%),
+        radial-gradient(circle at 16% 0%, rgba(238, 185, 197, .18), transparent 30%),
+        radial-gradient(circle at 88% 18%, rgba(179, 202, 221, .22), transparent 30%),
         linear-gradient(180deg, var(--bg-1), var(--bg-2) 74%);
       overflow-x: hidden;
     }
@@ -53,19 +53,18 @@ async def shop_app() -> str:
     }
     body::before {
       background:
-        radial-gradient(circle at 20% 18%, rgba(180, 96, 128, .12) 0 1px, transparent 1.5px),
-        radial-gradient(circle at 72% 28%, rgba(102, 126, 156, .10) 0 1px, transparent 1.5px),
-        radial-gradient(circle at 38% 76%, rgba(180, 96, 128, .09) 0 1px, transparent 1.5px);
-      background-size: 220px 220px, 290px 290px, 260px 260px;
+        linear-gradient(rgba(116, 130, 148, .07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(116, 130, 148, .06) 1px, transparent 1px);
+      background-size: 42px 42px;
       animation: drift 26s linear infinite;
-      opacity: .5;
+      opacity: .42;
     }
     body::after {
       background:
-        linear-gradient(120deg, transparent, rgba(255, 143, 177, .12), transparent);
+        linear-gradient(120deg, transparent, rgba(217, 147, 167, .08), transparent);
       transform: translateX(-120%);
       animation: veil 13s ease-in-out infinite;
-      opacity: .35;
+      opacity: .22;
     }
     @keyframes drift {
       from { transform: translate3d(0, 0, 0); }
@@ -120,9 +119,9 @@ async def shop_app() -> str:
       display: grid;
       gap: 6px;
       padding: 14px 16px;
-      border-radius: 18px;
+      border-radius: 16px;
       border: 1px solid var(--line);
-      background: linear-gradient(180deg, rgba(255, 255, 255, .94), rgba(255, 247, 251, .88));
+      background: var(--panel-strong);
       box-shadow: var(--shadow);
       backdrop-filter: blur(18px);
       color: var(--text);
@@ -131,7 +130,7 @@ async def shop_app() -> str:
       font: inherit;
     }
     .balance:hover {
-      border-color: rgba(196, 82, 123, .32);
+      border-color: rgba(159, 95, 114, .28);
       transform: translateY(-1px);
     }
     .profile-button {
@@ -142,17 +141,17 @@ async def shop_app() -> str:
       place-items: center;
       align-self: start;
       justify-self: end;
-      border-radius: 16px;
+      border-radius: 14px;
       border: 1px solid var(--line);
-      background: linear-gradient(180deg, rgba(255, 255, 255, .94), rgba(255, 247, 251, .88));
+      background: var(--panel-strong);
       box-shadow: var(--shadow);
-      color: #9f4468;
+      color: var(--accent-deep);
       cursor: pointer;
       transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
     }
     .profile-button:hover {
       transform: translateY(-1px);
-      border-color: rgba(196, 82, 123, .32);
+      border-color: rgba(159, 95, 114, .28);
     }
     .profile-glyph {
       width: 22px;
@@ -198,14 +197,14 @@ async def shop_app() -> str:
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      color: #b86f1d;
+      color: var(--coin);
       font-size: 34px;
       line-height: 1.05;
       font-weight: 800;
       letter-spacing: 0;
       text-shadow:
-        0 0 18px rgba(184, 111, 29, .16),
-        0 1px 0 rgba(255, 255, 255, .16);
+        0 0 18px rgba(155, 114, 68, .12),
+        0 1px 0 rgba(255, 255, 255, .18);
     }
     .vip-icon {
       width: 40px;
@@ -232,9 +231,9 @@ async def shop_app() -> str:
     }
     .tab, .buy {
       min-height: 48px;
-      border-radius: 14px;
+      border-radius: 12px;
       border: 1px solid var(--line);
-      background: rgba(255, 255, 255, .76);
+      background: var(--panel);
       color: var(--text);
       font-weight: 700;
       cursor: pointer;
@@ -246,18 +245,18 @@ async def shop_app() -> str:
     }
     .tab:hover, .buy:hover {
       transform: translateY(-1px);
-      border-color: rgba(255, 184, 202, .32);
-      box-shadow: 0 10px 24px rgba(151, 82, 112, .14);
+      border-color: rgba(159, 95, 114, .22);
+      box-shadow: 0 10px 24px rgba(72, 84, 102, .1);
     }
     .tab.active {
-      color: #2f1823;
-      background: linear-gradient(180deg, var(--accent), var(--accent-strong));
-      border-color: rgba(196, 82, 123, .38);
+      color: #fff;
+      background: linear-gradient(135deg, var(--accent-deep), var(--accent-strong));
+      border-color: rgba(159, 95, 114, .34);
     }
     .notice {
       min-height: 22px;
       margin: 6px 0 16px;
-      color: #9f4468;
+      color: var(--accent-deep);
       white-space: pre-wrap;
       line-height: 1.42;
     }
@@ -271,9 +270,9 @@ async def shop_app() -> str:
     .card {
       position: relative;
       overflow: hidden;
-      border-radius: 22px;
+      border-radius: 16px;
       border: 1px solid var(--line);
-      background: linear-gradient(180deg, rgba(255, 255, 255, .92), rgba(255, 247, 251, .86));
+      background: var(--panel);
       box-shadow: var(--shadow);
       padding: 18px;
     }
@@ -281,14 +280,9 @@ async def shop_app() -> str:
       content: "";
       position: absolute;
       inset: 0;
-      background: linear-gradient(
-        140deg,
-        transparent 0 45%,
-        rgba(255, 143, 177, .13) 52%,
-        transparent 64% 100%
-      );
+      background: linear-gradient(140deg, transparent 0 48%, rgba(255, 255, 255, .22) 52%, transparent 58%);
       transform: translateX(-120%);
-      animation: sheen 8s ease-in-out infinite;
+      animation: sheen 12s ease-in-out infinite;
       pointer-events: none;
     }
     @keyframes sheen {
@@ -313,26 +307,26 @@ async def shop_app() -> str:
       width: 110px;
       aspect-ratio: 1 / 1;
       object-fit: cover;
-      border-radius: 18px;
-      border: 1px solid rgba(183, 96, 130, .18);
+      border-radius: 14px;
+      border: 1px solid var(--line);
       background:
-        radial-gradient(circle at 30% 30%, rgba(255,255,255,.16), transparent 52%),
-        linear-gradient(180deg, #fff7fb, #eef6ff);
-      box-shadow: 0 18px 30px rgba(151, 82, 112, .16);
-      animation: itemPulse 3.8s ease-in-out infinite;
+        radial-gradient(circle at 30% 30%, rgba(255,255,255,.34), transparent 52%),
+        linear-gradient(180deg, #ffffff, #eef4f8);
+      box-shadow: 0 14px 26px rgba(72, 84, 102, .1);
+      animation: itemPulse 6s ease-in-out infinite;
       opacity: 0;
       transition: opacity .34s ease, transform .34s ease;
     }
     @keyframes itemPulse {
       0%, 100% {
         transform: scale(1);
-        box-shadow: 0 18px 30px rgba(151, 82, 112, .16);
+        box-shadow: 0 14px 26px rgba(72, 84, 102, .1);
       }
       50% {
         transform: scale(1.025);
         box-shadow:
-          0 0 0 10px rgba(255, 184, 202, 0),
-          0 20px 34px rgba(151, 82, 112, .18);
+          0 0 0 10px rgba(217, 147, 167, 0),
+          0 16px 30px rgba(72, 84, 102, .12);
       }
     }
     .item-copy {
@@ -358,19 +352,19 @@ async def shop_app() -> str:
       min-height: 26px;
       padding: 4px 10px;
       border-radius: 999px;
-      border: 1px solid rgba(183, 96, 130, .16);
-      color: #9f4468;
+      border: 1px solid var(--line);
+      color: var(--accent-deep);
       font-size: 12px;
       white-space: nowrap;
       background: rgba(255, 255, 255, .64);
     }
-    .badge.collectible { color: #9c6a1e; }
-    .badge.recommendation { color: #a04376; }
-    .badge.privilege { color: #9f4468; }
+    .badge.collectible { color: #8a6842; }
+    .badge.recommendation { color: #8f6470; }
+    .badge.privilege { color: var(--accent-deep); }
     .badge.owned {
-      color: #8b661d;
-      border-color: rgba(184, 111, 29, .2);
-      background: rgba(255, 236, 198, .52);
+      color: #7c6040;
+      border-color: rgba(155, 114, 68, .18);
+      background: rgba(245, 237, 221, .56);
     }
     .item p, .profile-copy, .premium-copy {
       margin: 0;
@@ -398,9 +392,9 @@ async def shop_app() -> str:
     .buy {
       min-width: 154px;
       padding: 0 18px;
-      background: linear-gradient(180deg, rgba(255, 240, 246, .94), rgba(255, 221, 233, .82));
-      color: #7f2d4f;
-      border-color: rgba(196, 82, 123, .24);
+      background: rgba(255, 255, 255, .72);
+      color: var(--accent-deep);
+      border-color: rgba(159, 95, 114, .2);
     }
     .buy:disabled {
       opacity: .45;
@@ -428,20 +422,19 @@ async def shop_app() -> str:
       place-items: center;
       border-radius: 999px;
       background:
-        radial-gradient(circle, rgba(255, 184, 202, .14), rgba(255, 184, 202, 0) 62%);
-      animation: aura 4s ease-in-out infinite;
+        radial-gradient(circle, rgba(217, 147, 167, .12), rgba(217, 147, 167, 0) 62%);
+      animation: aura 7s ease-in-out infinite;
     }
     .sphere-image {
       width: min(74vw, 300px);
       aspect-ratio: 1 / 1;
       object-fit: cover;
       border-radius: 999px;
-      border: 1px solid rgba(183, 96, 130, .2);
+      border: 1px solid var(--line);
       box-shadow:
-        0 0 0 0 rgba(255, 184, 202, .2),
-        0 0 36px rgba(255, 184, 202, .16),
-        0 24px 48px rgba(151, 82, 112, .18);
-      animation: spherePulse 2.8s ease-in-out infinite;
+        0 0 0 0 rgba(217, 147, 167, .14),
+        0 20px 44px rgba(72, 84, 102, .14);
+      animation: spherePulse 5.6s ease-in-out infinite;
       opacity: 0;
       transition: opacity .34s ease, transform .34s ease;
     }
@@ -453,16 +446,14 @@ async def shop_app() -> str:
       0%, 100% {
         transform: scale(1);
         box-shadow:
-          0 0 0 0 rgba(255, 184, 202, .18),
-          0 0 36px rgba(255, 184, 202, .16),
-          0 24px 48px rgba(151, 82, 112, .18);
+          0 0 0 0 rgba(217, 147, 167, .14),
+          0 20px 44px rgba(72, 84, 102, .14);
       }
       50% {
         transform: scale(1.04);
         box-shadow:
-          0 0 0 18px rgba(255, 184, 202, 0),
-          0 0 48px rgba(255, 184, 202, .28),
-          0 28px 58px rgba(151, 82, 112, .2);
+          0 0 0 18px rgba(217, 147, 167, 0),
+          0 24px 52px rgba(72, 84, 102, .16);
       }
     }
     .wisdom-copy {
@@ -496,8 +487,8 @@ async def shop_app() -> str:
       place-items: center;
       border-radius: 999px;
       background:
-        radial-gradient(circle, rgba(255, 216, 161, .16), rgba(255, 216, 161, 0) 62%);
-      animation: aura 4s ease-in-out infinite;
+        radial-gradient(circle, rgba(155, 114, 68, .11), rgba(155, 114, 68, 0) 62%);
+      animation: aura 7s ease-in-out infinite;
     }
     .wallet-coin {
       width: min(58vw, 220px);
@@ -506,7 +497,7 @@ async def shop_app() -> str:
       border-radius: 999px;
       opacity: 0;
       transition: opacity .34s ease, transform .34s ease;
-      animation: spherePulse 2.8s ease-in-out infinite;
+      animation: spherePulse 5.6s ease-in-out infinite;
     }
     .wallet-amount {
       display: grid;
@@ -533,9 +524,9 @@ async def shop_app() -> str:
     .dev-card {
       display: none;
       width: min(100%, 420px);
-      border-radius: 18px;
-      border: 1px dashed rgba(183, 96, 130, .2);
-      color: #9f4468;
+      border-radius: 14px;
+      border: 1px dashed rgba(116, 130, 148, .22);
+      color: var(--accent-deep);
       background: rgba(255, 255, 255, .7);
       padding: 16px;
     }
@@ -587,9 +578,9 @@ async def shop_app() -> str:
       width: fit-content;
       padding: 8px 12px;
       border-radius: 999px;
-      background: rgba(255, 221, 233, .58);
-      border: 1px solid rgba(196, 82, 123, .2);
-      color: #9f4468;
+      background: rgba(238, 185, 197, .28);
+      border: 1px solid rgba(159, 95, 114, .18);
+      color: var(--accent-deep);
       font-size: 13px;
     }
     .profile-grid {
@@ -599,8 +590,8 @@ async def shop_app() -> str:
     }
     .profile-metric {
       padding: 14px;
-      border-radius: 16px;
-      border: 1px solid rgba(183, 96, 130, .14);
+      border-radius: 14px;
+      border: 1px solid var(--line);
       background: rgba(255, 255, 255, .64);
     }
     .profile-metric span {
@@ -669,12 +660,12 @@ async def shop_app() -> str:
       width: 54px;
       height: 54px;
       object-fit: cover;
-      border-radius: 14px;
-      border: 1px solid rgba(183, 96, 130, .16);
+      border-radius: 12px;
+      border: 1px solid var(--line);
       background:
-        radial-gradient(circle at 30% 30%, rgba(255,255,255,.12), transparent 52%),
-        linear-gradient(180deg, #fff7fb, #eef6ff);
-      box-shadow: 0 10px 24px rgba(151, 82, 112, .16);
+        radial-gradient(circle at 30% 30%, rgba(255,255,255,.32), transparent 52%),
+        linear-gradient(180deg, #ffffff, #eef4f8);
+      box-shadow: 0 10px 24px rgba(72, 84, 102, .1);
       opacity: 0;
       transition: opacity .28s ease, transform .28s ease;
       animation: itemPulse 4.6s ease-in-out infinite;
@@ -684,8 +675,8 @@ async def shop_app() -> str:
       justify-items: center;
       gap: 10px;
       padding: 12px 10px;
-      border-radius: 16px;
-      border: 1px solid rgba(183, 96, 130, .14);
+      border-radius: 14px;
+      border: 1px solid var(--line);
       background: rgba(255, 255, 255, .64);
       text-align: center;
     }
@@ -700,7 +691,7 @@ async def shop_app() -> str:
       z-index: 30;
       display: none;
       padding: 18px;
-      background: rgba(255, 247, 251, .72);
+      background: rgba(246, 248, 251, .72);
       backdrop-filter: blur(14px);
       place-items: center;
     }
@@ -732,9 +723,9 @@ async def shop_app() -> str:
       position: relative;
       overflow: hidden;
       background:
-        linear-gradient(110deg, rgba(255, 255, 255, .44) 20%, rgba(255, 143, 177, .18) 36%, rgba(255, 255, 255, .44) 52%),
+        linear-gradient(110deg, rgba(255, 255, 255, .44) 20%, rgba(217, 147, 167, .12) 36%, rgba(255, 255, 255, .44) 52%),
         radial-gradient(circle at 30% 30%, rgba(255,255,255,.5), transparent 52%),
-        linear-gradient(180deg, rgba(255, 247, 251, .95), rgba(238, 246, 255, .98));
+        linear-gradient(180deg, rgba(255, 255, 255, .95), rgba(238, 244, 248, .98));
       background-size: 220% 100%, auto, auto;
       animation:
         imageShimmer 1.8s linear infinite,
@@ -756,8 +747,8 @@ async def shop_app() -> str:
       100% { background-position: -40% 0, 0 0, 0 0; }
     }
     .empty {
-      border-radius: 22px;
-      border: 1px dashed rgba(183, 96, 130, .18);
+      border-radius: 16px;
+      border: 1px dashed rgba(116, 130, 148, .2);
       background: rgba(255, 255, 255, .64);
       padding: 22px;
       color: var(--text-soft);
@@ -810,19 +801,19 @@ async def shop_app() -> str:
       place-items: center;
       border-radius: 999px;
       background:
-        radial-gradient(circle, rgba(255, 184, 202, .18), rgba(255, 184, 202, 0) 64%);
-      animation: aura 3.6s ease-in-out infinite;
+        radial-gradient(circle, rgba(217, 147, 167, .13), rgba(217, 147, 167, 0) 64%);
+      animation: aura 7s ease-in-out infinite;
     }
     .entry-image {
       width: min(62vw, 260px);
       aspect-ratio: 1 / 1;
       object-fit: cover;
-      border-radius: 30px;
-      border: 1px solid rgba(183, 96, 130, .2);
+      border-radius: 22px;
+      border: 1px solid var(--line);
       box-shadow:
-        0 0 0 0 rgba(255, 184, 202, .26),
-        0 24px 60px rgba(151, 82, 112, .2);
-      animation: spherePulse 2.6s ease-in-out infinite;
+        0 0 0 0 rgba(217, 147, 167, .16),
+        0 22px 54px rgba(72, 84, 102, .16);
+      animation: spherePulse 5.6s ease-in-out infinite;
     }
     .entry-title {
       margin: 0;
@@ -857,7 +848,7 @@ async def shop_app() -> str:
     .admin-modal {
       position: fixed;
       inset: 0;
-      background: rgba(255, 247, 251, .86);
+      background: rgba(246, 248, 251, .86);
       backdrop-filter: blur(16px);
       z-index: 100;
       display: none;
@@ -871,10 +862,10 @@ async def shop_app() -> str:
     .admin-modal-content {
       width: min(100%, 420px);
       background: #ffffff;
-      border: 1px solid rgba(183, 96, 130, .28);
-      border-radius: 20px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
       padding: 24px;
-      box-shadow: 0 30px 80px rgba(151, 82, 112, .22);
+      box-shadow: 0 30px 80px rgba(72, 84, 102, .16);
     }
     .admin-modal h3 {
       margin: 0 0 16px 0;
@@ -884,15 +875,15 @@ async def shop_app() -> str:
       width: 100%;
       padding: 12px 14px;
       border-radius: 12px;
-      border: 1px solid rgba(183, 96, 130, .28);
-      background: #fff8fb;
-      color: #241821;
+      border: 1px solid rgba(116, 130, 148, .2);
+      background: #fbfafc;
+      color: var(--text);
       font-size: 15px;
       margin-bottom: 12px;
     }
     .admin-input:focus {
       outline: none;
-      border-color: #ff7fa5;
+      border-color: var(--accent-strong);
     }
     @media (max-width: 840px) {
       header {
