@@ -216,7 +216,7 @@ def format_first_contact() -> str:
 
 
 def first_contact_intro_animation() -> list[ChatAnimationStep]:
-    def terminal_line(text: str, duration_ms: int = 2200) -> ChatAnimationStep:
+    def terminal_line(text: str, duration_ms: int = 1000) -> ChatAnimationStep:
         return ChatAnimationStep(text=f"<code>{escape(text)}</code>", duration_ms=duration_ms)
 
     return [
@@ -225,7 +225,7 @@ def first_contact_intro_animation() -> list[ChatAnimationStep]:
         terminal_line("Идентификация цифрового следа..."),
         terminal_line("Идентификация цифрового следа завершена."),
         terminal_line("Статус по умолчанию: Анализируем..."),
-        terminal_line("Статус по умолчанию: ОБЪЕКТ.", duration_ms=3200),
+        terminal_line("Статус по умолчанию: ОБЪЕКТ.", duration_ms=1200),
     ]
 
 
