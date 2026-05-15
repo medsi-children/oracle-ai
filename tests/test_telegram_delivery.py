@@ -7,6 +7,7 @@ from app.schemas.message import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     MessageResponse,
+    OutgoingMessage,
 )
 from app.services import telegram_delivery
 from app.services.telegram_delivery import (
@@ -19,12 +20,13 @@ from app.services.telegram_delivery import (
 )
 
 
-def test_reply_markup_supports_callback_and_url_buttons() -> None:
+def test_reply_markup_supports_callback_url_and_web_app_buttons() -> None:
     markup = InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(text="Да", callback_data="yes"),
                 InlineKeyboardButton(text="Чат", url="https://t.me/example"),
+                InlineKeyboardButton(text="Войти", web_app={"url": "https://example.com/app/shop"}),
             ]
         ]
     )
@@ -34,6 +36,7 @@ def test_reply_markup_supports_callback_and_url_buttons() -> None:
             [
                 {"text": "Да", "callback_data": "yes"},
                 {"text": "Чат", "url": "https://t.me/example"},
+                {"text": "Войти", "web_app": {"url": "https://example.com/app/shop"}},
             ]
         ]
     }
@@ -80,9 +83,47 @@ async def test_send_telegram_response_sends_message_with_markup(monkeypatch) -> 
                 "reply_markup": {
                     "inline_keyboard": [[{"text": "Открыть", "url": "https://t.me/example"}]]
                 },
+                "parse_mode": "HTML",
             },
         )
     ]
+
+
+async def test_send_telegram_response_sends_extra_messages_before_final(monkeypatch) -> None:
+    calls = []
+
+    async def fake_telegram_api(method: str, payload: dict) -> dict:
+        calls.append((method, payload))
+        return {"ok": True, "result": {"message_id": 42}}
+
+    monkeypatch.setattr(telegram_delivery, "telegram_api", fake_telegram_api)
+    update = {"message": {"chat": {"id": 123}, "text": "Привет"}}
+    response = MessageResponse(
+        user_id=uuid4(),
+        session_id=uuid4(),
+        reply="Финальный текст",
+        mode="onboarding_completed",
+        extra_messages=[OutgoingMessage(text="Вывод по ответам")],
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="Войти в систему",
+                        web_app={"url": "https://example.com/app/shop"},
+                    )
+                ]
+            ]
+        ),
+    )
+
+    await send_telegram_response(update, response, answer_callback=False)
+
+    assert [payload["text"] for _, payload in calls] == ["Вывод по ответам", "Финальный текст"]
+    assert calls[-1][1]["reply_markup"] == {
+        "inline_keyboard": [
+            [{"text": "Войти в систему", "web_app": {"url": "https://example.com/app/shop"}}]
+        ]
+    }
 
 
 async def test_send_telegram_response_plays_intro_animation(monkeypatch) -> None:

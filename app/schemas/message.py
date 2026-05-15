@@ -15,6 +15,7 @@ class InlineKeyboardButton(BaseModel):
     text: str
     callback_data: str | None = None
     url: str | None = None
+    web_app: dict[str, str] | None = None
 
 
 class InlineKeyboardMarkup(BaseModel):
@@ -27,6 +28,11 @@ class ChatAnimationStep(BaseModel):
     parse_mode: str = "HTML"
 
 
+class OutgoingMessage(BaseModel):
+    text: str
+    reply_markup: InlineKeyboardMarkup | None = None
+
+
 class MessageResponse(BaseModel):
     user_id: UUID
     session_id: UUID
@@ -35,6 +41,7 @@ class MessageResponse(BaseModel):
     token_delta: int = 0
     subjectivity_score: int | None = None
     reply_markup: InlineKeyboardMarkup | None = None
+    extra_messages: list[OutgoingMessage] = Field(default_factory=list)
     intro_animation: list[ChatAnimationStep] | None = None
 
     loading_message: str | None = None

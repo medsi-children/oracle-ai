@@ -5,7 +5,7 @@ import logging
 from typing import Any
 
 from app.core.config import settings
-from app.schemas.message import InlineKeyboardMarkup, MessageResponse
+from app.schemas.message import InlineKeyboardMarkup, MessageResponse, OutgoingMessage
 from app.services.stars import TelegramStarsError, telegram_api
 
 logger = logging.getLogger(__name__)
@@ -41,11 +41,13 @@ def extract_callback_query_id(update: dict[str, Any]) -> str | None:
 def to_telegram_reply_markup(markup: InlineKeyboardMarkup | None) -> dict | None:
     if markup is None:
         return None
-    rows: list[list[dict[str, str]]] = []
+    rows: list[list[dict[str, Any]]] = []
     for row in markup.inline_keyboard:
-        buttons: list[dict[str, str]] = []
+        buttons: list[dict[str, Any]] = []
         for button in row:
-            if button.url:
+            if button.web_app:
+                buttons.append({"text": button.text, "web_app": button.web_app})
+            elif button.url:
                 buttons.append({"text": button.text, "url": button.url})
             elif button.callback_data:
                 buttons.append({"text": button.text, "callback_data": button.callback_data})
@@ -109,6 +111,20 @@ async def send_message(
     if parse_mode:
         payload["parse_mode"] = parse_mode
     return await telegram_api("sendMessage", payload)
+
+
+async def send_outgoing_message(chat_id: int, message: OutgoingMessage) -> None:
+    chunks = split_telegram_text(message.text)
+    if not chunks:
+        return
+    reply_markup = to_telegram_reply_markup(message.reply_markup)
+    for index, chunk in enumerate(chunks):
+        await send_message(
+            chat_id=chat_id,
+            text=chunk,
+            reply_markup=reply_markup if index == len(chunks) - 1 else None,
+            parse_mode="HTML",
+        )
 
 async def delete_message(*, chat_id: int, message_id: int) -> None:
 
@@ -217,15 +233,13 @@ async def send_telegram_response(
             message_id=loading_message_id,
         )
 
-    reply_markup = to_telegram_reply_markup(response.reply_markup)
+    for extra_message in response.extra_messages:
+        await send_outgoing_message(chat_id, extra_message)
 
-    for index, chunk in enumerate(chunks):
-        await send_message(
-            chat_id=chat_id,
-            text=chunk,
-            reply_markup=reply_markup if index == len(chunks) - 1 else None,
-            parse_mode="HTML",
-        )
+    await send_outgoing_message(
+        chat_id,
+        OutgoingMessage(text=response.reply, reply_markup=response.reply_markup),
+    )
 
 
 async def sync_direct_telegram_webhook() -> str:

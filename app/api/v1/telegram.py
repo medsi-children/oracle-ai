@@ -6,13 +6,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.db.session import AsyncSessionLocal, get_db
-from app.schemas.message import MessageResponse
+from app.schemas.message import MessageResponse, OutgoingMessage
 from app.schemas.user import UserCreate
 from app.services.dialogue import (
     add_message,
     first_contact_intro_animation,
     get_active_session,
     handle_user_text,
+    split_onboarding_completed_reply,
 )
 from app.services.stars import answer_pre_checkout_query, process_successful_star_payment
 from app.services.telegram_delivery import answer_callback_query, send_telegram_response
@@ -145,7 +146,13 @@ async def build_telegram_response(update: dict[str, Any], db: AsyncSession) -> M
         chat_id=int(chat_id) if chat_id is not None else None,
         chat_type=chat.get("type"),
     )
-    await add_message(db, user=user, session=session, role="assistant", content=reply)
+    extra_replies, reply = (
+        split_onboarding_completed_reply(reply)
+        if mode == "onboarding_completed"
+        else ([], reply)
+    )
+    assistant_content = "\n\n".join([*extra_replies, reply])
+    await add_message(db, user=user, session=session, role="assistant", content=assistant_content)
     await db.commit()
 
     return MessageResponse(
@@ -156,6 +163,7 @@ async def build_telegram_response(update: dict[str, Any], db: AsyncSession) -> M
         token_delta=token_delta,
         subjectivity_score=user.subjectivity_score,
         reply_markup=reply_markup,
+        extra_messages=[OutgoingMessage(text=text) for text in extra_replies],
         intro_animation=first_contact_intro_animation()
         if mode == "onboarding_start"
         else None,
