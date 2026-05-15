@@ -63,6 +63,55 @@ async def notify_admins(text: str) -> None:
             continue
 
 
+def _format_star_amount(value: dict) -> str:
+    amount = int(value.get("amount") or 0)
+    nanostar_amount = int(value.get("nanostar_amount") or 0)
+    if nanostar_amount:
+        fraction = f"{nanostar_amount:09d}".rstrip("0")
+        return f"{amount}.{fraction} ⭐"
+    return f"{amount} ⭐"
+
+
+async def get_bot_star_balance() -> str:
+    data = await telegram_api("getMyStarBalance", {})
+    result = data.get("result") or {}
+    if not isinstance(result, dict):
+        return "Баланс звезд не удалось разобрать."
+    return _format_star_amount(result)
+
+
+async def get_bot_star_transactions(*, limit: int = 5) -> list[dict]:
+    data = await telegram_api(
+        "getStarTransactions",
+        {
+            "offset": 0,
+            "limit": max(1, min(100, limit)),
+        },
+    )
+    result = data.get("result") or {}
+    transactions = result.get("transactions") if isinstance(result, dict) else None
+    return transactions if isinstance(transactions, list) else []
+
+
+async def format_bot_star_balance() -> str:
+    balance = await get_bot_star_balance()
+    transactions = await get_bot_star_transactions(limit=5)
+    if not transactions:
+        return f"Баланс бота: {balance}\n\nStar-транзакций нет."
+
+    lines = [f"Баланс бота: {balance}", "", "Star-транзакции из Bot API:"]
+    for item in transactions:
+        if not isinstance(item, dict):
+            continue
+        tx_id = str(item.get("id") or "без id")
+        amount = item.get("amount") or {}
+        amount_text = _format_star_amount(amount) if isinstance(amount, dict) else "неизвестно"
+        source = item.get("source") or item.get("receiver") or {}
+        source_type = source.get("type") if isinstance(source, dict) else None
+        lines.append(f"{tx_id}: {amount_text}" + (f" | {source_type}" if source_type else ""))
+    return "\n".join(lines)
+
+
 async def create_star_invoice_link(
     db: AsyncSession,
     *,

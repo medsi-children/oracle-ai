@@ -57,19 +57,10 @@ async def build_telegram_response(update: dict[str, Any], db: AsyncSession) -> M
         return MessageResponse(
             user_id=user.id,
             session_id=session.id,
-            reply=reply,
-            mode=mode,
-            token_delta=token_delta,
+            reply="Pre-checkout query answered.",
+            mode="stars_pre_checkout_ok" if ok else "stars_pre_checkout_rejected",
             subjectivity_score=user.subjectivity_score,
-            reply_markup=reply_markup,
-            intro_animation=first_contact_intro_animation()
-            if mode == "onboarding_start"
-            else None,
-            loading_message=(
-                "```markdown\nВаши ответы анализируются...\n\nОракул оценивает уровень субъектности.\n```"
-                if mode == "onboarding_complete"
-                else None
-            ),
+            suppress_reply=True,
         )
 
     callback_query = update.get("callback_query") or {}

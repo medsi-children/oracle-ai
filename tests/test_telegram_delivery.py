@@ -1,5 +1,7 @@
+from types import SimpleNamespace
 from uuid import uuid4
 
+from app.api.v1 import telegram
 from app.schemas.message import (
     ChatAnimationStep,
     InlineKeyboardButton,
@@ -118,6 +120,67 @@ async def test_send_telegram_response_plays_intro_animation(monkeypatch) -> None
     assert calls[0][1]["text"] == "Шаг 1"
     assert calls[1][1]["text"] == "Шаг 2"
     assert calls[-1][1]["text"] == "Финальный ответ"
+
+
+async def test_pre_checkout_response_is_suppressed(monkeypatch) -> None:
+    user = SimpleNamespace(
+        id=uuid4(),
+        subjectivity_score=50,
+    )
+    session = SimpleNamespace(id=uuid4())
+    calls = []
+
+    async def fake_get_or_create_user(db, payload):
+        calls.append(("get_user", payload.telegram_id))
+        return user
+
+    async def fake_get_active_session(db, user, source):
+        calls.append(("get_session", source))
+        return session
+
+    async def fake_answer_pre_checkout_query(db, *, pre_checkout_query):
+        calls.append(("answer_pre_checkout", pre_checkout_query["id"]))
+        return True, ""
+
+    async def fake_add_message(*args, **kwargs):
+        calls.append(("add_message", kwargs["content"]))
+
+    class FakeDb:
+        async def commit(self) -> None:
+            calls.append(("commit", None))
+
+    monkeypatch.setattr(telegram, "get_or_create_user", fake_get_or_create_user)
+    monkeypatch.setattr(telegram, "get_active_session", fake_get_active_session)
+    monkeypatch.setattr(
+        telegram,
+        "answer_pre_checkout_query",
+        fake_answer_pre_checkout_query,
+    )
+    monkeypatch.setattr(telegram, "add_message", fake_add_message)
+
+    response = await telegram.build_telegram_response(
+        {
+            "update_id": 1,
+            "pre_checkout_query": {
+                "id": "pcq-1",
+                "from": {"id": 123, "username": "tester"},
+                "invoice_payload": "ethos:test",
+                "currency": "XTR",
+                "total_amount": 1,
+            },
+        },
+        FakeDb(),
+    )
+
+    assert response.mode == "stars_pre_checkout_ok"
+    assert response.suppress_reply is True
+    assert calls == [
+        ("get_user", 123),
+        ("get_session", "telegram"),
+        ("answer_pre_checkout", "pcq-1"),
+        ("add_message", "stars_pre_checkout:ethos:test"),
+        ("commit", None),
+    ]
 
 
 async def test_sync_direct_webhook_sets_expected_payload(monkeypatch) -> None:

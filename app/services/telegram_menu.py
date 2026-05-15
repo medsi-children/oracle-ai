@@ -32,6 +32,7 @@ ADMIN_COMMANDS = [
     {"command": "setlifecycle", "description": "Задать этап доступа"},
     {"command": "close", "description": "Закрыть активные сессии"},
     {"command": "shoplink", "description": "Ссылка на mini-app магазина"},
+    {"command": "starbalance", "description": "Баланс звезд бота"},
     {"command": "withdrawals", "description": "Заявки на вывод звезд"},
     {"command": "withdrawdone", "description": "Отметить вывод звезд"},
     {"command": "synccommands", "description": "Обновить меню команд"},

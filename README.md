@@ -134,6 +134,7 @@ POST /api/v1/telegram/direct-webhook
 - `/setlifecycle @username follower` — задать внутренний этап доступа.
 - `/close @username` — закрыть активные сессии пользователя.
 - `/shoplink @username` — ссылка на mini-app магазина.
+- `/starbalance` — посмотреть баланс звезд бота и Star-транзакции.
 - `/synccommands` — обновить меню команд и mini-app кнопку.
 - `/syncwebhook` — подключить Telegram напрямую к backend.
 - `/webhookinfo` — проверить текущий Telegram webhook.

@@ -10,7 +10,13 @@ from app.models.token import TokenLedgerEntry
 from app.models.user import User
 from app.services.admin_reset import find_user_for_reset, reset_user_profile
 from app.services.assessment import calculate_status
-from app.services.stars import display_user, list_pending_withdrawals, mark_withdrawal_done
+from app.services.stars import (
+    TelegramStarsError,
+    display_user,
+    format_bot_star_balance,
+    list_pending_withdrawals,
+    mark_withdrawal_done,
+)
 from app.services.telegram_delivery import (
     get_direct_telegram_webhook_info,
     sync_direct_telegram_webhook,
@@ -45,6 +51,7 @@ def format_admin_help(*, success_prefix: bool = True) -> str:
         "/setlifecycle @username follower — задать этап доступа\n"
         "/close @username — закрыть активные сессии пользователя\n"
         "/shoplink @username — ссылка на mini-app магазина\n"
+        "/starbalance — баланс звезд бота\n"
         "/withdrawals — заявки на вывод звезд\n"
         "/withdrawdone id — отметить заявку выплаченной\n"
         "/synccommands — обновить меню команд Telegram\n"
@@ -281,6 +288,13 @@ async def withdrawdone_command(db: AsyncSession, clean: str) -> str:
     )
 
 
+async def starbalance_command() -> str:
+    try:
+        return format_admin_success(await format_bot_star_balance())
+    except TelegramStarsError as exc:
+        return format_admin_error(f"Не удалось получить баланс звезд бота: {exc}")
+
+
 async def syncwebhook_command() -> str:
     result = await sync_direct_telegram_webhook()
     if result.startswith("Direct webhook Telegram установлен."):
@@ -316,6 +330,8 @@ async def handle_admin_tool_command(db: AsyncSession, admin: User, clean: str) -
         return await close_sessions_command(db, clean)
     if command == "/shoplink":
         return await shoplink_command(db, clean)
+    if command == "/starbalance":
+        return await starbalance_command()
     if command == "/withdrawals":
         return await withdrawals_command(db)
     if command == "/withdrawdone":
