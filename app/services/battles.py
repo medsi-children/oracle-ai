@@ -12,7 +12,11 @@ from app.models.marketplace import MarketplaceItem, MarketplacePurchase
 from app.models.message import Message
 from app.models.token import TokenLedgerEntry
 from app.models.user import User
-from app.services.assessment import calculate_status, score_text_locally
+from app.services.assessment import (
+    calculate_status,
+    refresh_user_profile_summary,
+    score_text_locally,
+)
 from app.services.llm import extract_json_object, openrouter_chat
 from app.services.phrasing import psycoins
 
@@ -489,6 +493,13 @@ async def finish_active_battle(
         previous = user.subjectivity_score
         user.subjectivity_score = round((previous * 0.7) + (score * 0.3))
         user.status = calculate_status(user.subjectivity_score, user.token_balance)
+        await refresh_user_profile_summary(
+            db,
+            user=user,
+            event_summary=verdict["summary"],
+            event_source="battle",
+            event_score=score,
+        )
 
     winner_return = winner_participant.entry_fee or battle.entry_fee or 1
     winner_reward = battle.reward_tokens or winner_return
