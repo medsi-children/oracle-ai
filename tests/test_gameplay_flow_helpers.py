@@ -1,12 +1,16 @@
 from datetime import datetime
 from types import SimpleNamespace
+from uuid import uuid4
 from zoneinfo import ZoneInfo
 
 from app.core.config import settings
 from app.services.daily_tasks import (
     MORNING_QUESTION_PREFIX,
+    compact_oracle_thoughts,
     morning_fallback_question,
     morning_question_is_valid,
+    morning_question_replacement_requested,
+    process_morning_case_response,
 )
 from app.services.dialogue import (
     format_confirmation_prompt,
@@ -60,6 +64,81 @@ def test_morning_question_prefix_and_fallback_are_safe() -> None:
     assert morning_question_is_valid(morning_fallback_question())
     assert not morning_question_is_valid("Ты субъект или объект?")
     assert not morning_question_is_valid("Что выберет терпила?")
+
+
+def test_morning_question_replacement_request_is_detected() -> None:
+    assert morning_question_replacement_requested("Не понимаю вопрос, дайте другой")
+    assert morning_question_replacement_requested("Можно другой?")
+    assert morning_question_replacement_requested("Можно новый вопрос?")
+    assert not morning_question_replacement_requested(
+        "Я отвечу спокойно и задам уточняющий вопрос"
+    )
+
+
+def test_oracle_thoughts_are_compact() -> None:
+    summary = (
+        "В ответе видно, что вы не бросаетесь в спор сразу. "
+        "Сильная сторона — попытка назвать границу спокойно. "
+        "Зона роста: добавить конкретную фразу."
+    )
+
+    assert compact_oracle_thoughts(summary) == (
+        "В ответе видно, что вы не бросаетесь в спор сразу. "
+        "Сильная сторона — попытка назвать границу спокойно."
+    )
+
+
+async def test_morning_response_returns_dialogue_contract(monkeypatch) -> None:
+    async def fake_create_assessment(*args, **kwargs):
+        return (
+            SimpleNamespace(
+                id=uuid4(),
+                summary="Вы выбрали спокойный первый шаг. Это снижает риск лишнего конфликта.",
+            ),
+            0,
+        )
+
+    class FakeDb:
+        def __init__(self) -> None:
+            self.added = []
+
+        def add(self, item) -> None:
+            self.added.append(item)
+
+        async def flush(self) -> None:
+            return None
+
+    monkeypatch.setattr(
+        "app.services.daily_tasks.create_assessment",
+        fake_create_assessment,
+    )
+    monkeypatch.setattr(
+        "app.services.daily_tasks.assessment_average_score",
+        lambda assessment: 80,
+    )
+    user = SimpleNamespace(
+        id=uuid4(),
+        token_balance=0,
+        subjectivity_score=50,
+        status="object",
+    )
+    db = FakeDb()
+
+    reply, mode, token_delta, markup = await process_morning_case_response(
+        db,
+        user,
+        "Отвечу спокойно и уточню, что именно нужно переделать.",
+        question="Утренний вопрос",
+    )
+
+    assert reply.startswith("Спасибо за ваш ответ.")
+    assert "Мысли Оракула:" in reply
+    assert "Вы заработали:" in reply
+    assert mode == "morning_case_assessment"
+    assert token_delta == 4
+    assert markup is None
+    assert user.token_balance == 4
+    assert len(db.added) == 1
 
 
 def test_system_entry_default_price_is_one_star() -> None:

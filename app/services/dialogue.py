@@ -39,7 +39,11 @@ from app.services.battles import (
     join_waiting_battle,
 )
 from app.services.cases import create_custom_case, get_random_case
-from app.services.daily_tasks import process_morning_case_response
+from app.services.daily_tasks import (
+    generate_morning_challenge_question,
+    morning_question_replacement_requested,
+    process_morning_case_response,
+)
 from app.services.group_discussions import (
     DISCUSSION_ENTRY_OPTIONS,
     create_case_discussion,
@@ -1390,6 +1394,17 @@ async def handle_user_text(
         return reply, "onboarding_case_prompt", token_delta, None
 
     if session.state == "morning:wait" and not command.startswith("/"):
+        if morning_question_replacement_requested(clean):
+            question = await generate_morning_challenge_question()
+            write_session_payload(session, {"morning_question": question})
+            return (
+                "Конечно, заменяю вопрос.\n\n"
+                f"{question}\n\n"
+                "Ответьте одним сообщением, как поступили бы в этой ситуации.",
+                "morning_question_replaced",
+                0,
+                None,
+            )
         question = read_morning_question(session)
         session.state = "active"
         clear_session_payload(session)

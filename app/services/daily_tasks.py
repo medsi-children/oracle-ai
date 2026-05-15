@@ -24,6 +24,26 @@ MORNING_QUESTION_PREFIX = (
     "У Оракула для вас вопрос. Ответьте на него и заработаете псикоины."
 )
 FORBIDDEN_MORNING_TERMS = ("субъект", "объект", "терпила")
+MORNING_QUESTION_REPLACEMENT_MARKERS = (
+    "другой вопрос",
+    "другой кейс",
+    "можно другой",
+    "давай другой",
+    "дайте другой",
+    "замени вопрос",
+    "заменить вопрос",
+    "новый вопрос",
+    "не понял",
+    "не поняла",
+    "не понимаю",
+    "не ясен",
+    "неясн",
+    "непонятно",
+    "непонятн",
+    "переформулируй",
+    "поясни вопрос",
+    "сложно понять",
+)
 
 
 async def get_or_create_morning_session(
@@ -56,15 +76,43 @@ async def get_or_create_morning_session(
 
 def morning_fallback_question() -> str:
     return (
-        "Представьте: вам резко отвечают в рабочем чате, и внутри сразу поднимается желание "
-        "уколоть в ответ или демонстративно замолчать. Что вы сделаете в первые десять секунд, "
-        "чтобы не отдать управление своей реакцией чужому тону?"
+        "Представьте: вы утром открыли чат, а там короткое резкое сообщение от коллеги. "
+        "Что вы напишете первым ответом, чтобы не разжечь конфликт и не проглотить раздражение молча?"
     )
 
 
 def morning_question_is_valid(text: str) -> bool:
     lower = text.lower()
     return bool(text.strip()) and not any(term in lower for term in FORBIDDEN_MORNING_TERMS)
+
+
+def morning_question_replacement_requested(text: str) -> bool:
+    lower = text.lower().replace("ё", "е")
+    return any(marker in lower for marker in MORNING_QUESTION_REPLACEMENT_MARKERS)
+
+
+def compact_oracle_thoughts(summary: str) -> str:
+    clean = " ".join(summary.split())
+    if not clean:
+        return "Ответ принят: главное здесь не идеальность, а выбранный вами первый шаг."
+
+    sentences: list[str] = []
+    start = 0
+    for index, char in enumerate(clean):
+        if char in ".!?":
+            sentence = clean[start : index + 1].strip()
+            if sentence:
+                sentences.append(sentence)
+            start = index + 1
+        if len(sentences) >= 2:
+            break
+
+    result = " ".join(sentences) if sentences else clean
+    if len(result) <= 320:
+        return result
+
+    trimmed = result[:317].rsplit(" ", maxsplit=1)[0].strip()
+    return f"{trimmed}..."
 
 
 async def generate_morning_challenge_question() -> str:
@@ -74,13 +122,20 @@ async def generate_morning_challenge_question() -> str:
                 {
                     "role": "system",
                     "content": (
-                        "Придумай один challenging вопрос на русском для утренней рассылки "
-                        "Оракула. Вопрос должен быть конкретной жизненной ситуацией или "
-                        "риторическим вопросом о том, управляет ли человек своей реакцией, "
-                        "выбором и ответственностью, или живет на автопилоте, через жалобы, "
-                        "обиду и ожидание, что кто-то другой все решит. Нельзя использовать "
-                        "слова 'субъект', 'объект', 'терпила' и любые формы этих слов. "
-                        "Без Markdown, без нравоучения, 1-2 предложения."
+                        "Придумай один простой утренний вопрос на русском для рассылки Оракула. "
+                        "Его читает человек утром в телефоне: он должен сразу представить сцену "
+                        "и захотеть ответить. Формат: мини-кейс из обычной жизни и один вопрос "
+                        "про конкретный следующий шаг. В кейсе должны быть место или контекст, "
+                        "небольшой конфликт, ограничение по времени или эмоциям и понятный выбор. "
+                        "Подходящие темы: рабочий чат, семья, деньги, усталость, спор, просьба, "
+                        "дедлайн, неловкий разговор, обещание, чужая ошибка. Спрашивай не про "
+                        "качества человека и не про жизненные принципы, а про то, что он скажет "
+                        "или сделает прямо сейчас. Хороший тон: 'Представьте: ... Что вы сделаете "
+                        "первым делом?' или 'Что ответите одной фразой?'. Плохой тон: общие "
+                        "вопросы вроде 'какой выбор вы сделаете сегодня?' без сцены и действия. "
+                        "Пиши живым разговорным языком, без философии, без нравоучения, без Markdown. "
+                        "Нельзя использовать слова 'субъект', 'объект', 'терпила'. "
+                        "1-2 коротких предложения, до 230 символов."
                     ),
                 },
                 {"role": "user", "content": "Дай один утренний вопрос."},
@@ -148,7 +203,7 @@ async def process_morning_case_response(
     user: User,
     text: str,
     question: str | None = None,
-) -> tuple[str, int]:
+) -> tuple[str, str, int, None]:
     """Process a morning answer and award 1-5 psycoins based on quality."""
     implicit = analyze_implicit_signals(text)
     assessment, _ = await create_assessment(
@@ -175,10 +230,12 @@ async def process_morning_case_response(
     )
     await db.flush()
 
+    thoughts = compact_oracle_thoughts(assessment.summary)
     return (
-        "Ответ принят.\n\n"
-        f"Оценка: {avg_score}/100\n"
-        f"Начислено: {psycoins(psycoins_awarded)}\n\n"
-        f"{assessment.summary}",
+        "Спасибо за ваш ответ.\n\n"
+        f"Мысли Оракула: {thoughts}\n\n"
+        f"Вы заработали: {psycoins(psycoins_awarded)}",
+        "morning_case_assessment",
         psycoins_awarded,
+        None,
     )
