@@ -1,6 +1,7 @@
 import re
 from dataclasses import dataclass
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.assessment import Assessment
@@ -14,6 +15,105 @@ from app.services.llm import (
 )
 
 ONBOARDING_INITIAL_SCORE_CAP = 72
+
+PROFILE_SUMMARY_STOP_MARKERS = [
+    "<b>ETHOS</b>",
+    "ETHOS —",
+    "В чем разница между Объектом и Субъектом?",
+    "<b>В чем разница между Объектом и Субъектом?</b>",
+    "Ваш следующий шаг",
+]
+
+
+def extract_profile_summary(text: str) -> str:
+    clean = (text or "").strip()
+    if not clean:
+        return ""
+
+    for marker in PROFILE_SUMMARY_STOP_MARKERS:
+        index = clean.find(marker)
+        if index != -1:
+            clean = clean[:index].strip()
+
+    return clean
+
+
+async def refresh_user_profile_summary(
+    db: AsyncSession,
+    *,
+    user: User,
+    event_summary: str | None = None,
+    event_source: str | None = None,
+    event_score: int | None = None,
+) -> None:
+    previous_summary = extract_profile_summary(user.profile_summary or "")
+
+    result = await db.execute(
+        select(Assessment)
+        .where(Assessment.user_id == user.id)
+        .order_by(Assessment.created_at.desc())
+        .limit(8)
+    )
+    assessments = list(reversed(result.scalars().all()))
+
+    assessment_text = "\n\n".join(
+        (
+            f"Источник: {assessment.source}\n"
+            f"Субъектность: {assessment.subjectivity}/100\n"
+            f"Честность: {assessment.honesty}/100\n"
+            f"Эмоциональная устойчивость: {assessment.emotional_sovereignty}/100\n"
+            f"Когнитивная гибкость: {assessment.cognitive_humility}/100\n"
+            f"Эмпатия: {assessment.empathy}/100\n"
+            f"Вывод: {assessment.summary}"
+        )
+        for assessment in assessments
+    )
+
+    event_block = ""
+    if event_summary:
+        event_block = (
+            f"\n\nПоследнее значимое событие:\n"
+            f"Источник: {event_source or 'unknown'}\n"
+            f"Оценка: {event_score}/100\n" if event_score is not None else
+            f"\n\nПоследнее значимое событие:\n"
+            f"Источник: {event_source or 'unknown'}\n"
+        )
+        event_block += f"Вывод: {event_summary}"
+
+    fallback = event_summary or previous_summary or "Профиль формируется по ответам пользователя."
+
+    try:
+        text = await openrouter_chat(
+            [
+                {
+                    "role": "system",
+                    "content": (
+                        "Ты обновляешь живой психологический профиль ETHOS. "
+                        "Сделай короткий персональный вывод о человеке на основе последних оценок. "
+                        "Без описания системы ETHOS, без объяснения Субъекта и Объекта, без призыва войти в систему. "
+                        "Нужно 2 блока: 1) что сейчас видно по человеку, 2) зона роста. "
+                        "Без диагнозов. Обращение на 'вы'."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        f"Текущий индекс субъектности: {user.subjectivity_score}/100\n"
+                        f"Текущий статус: {user.status}\n\n"
+                        f"Предыдущий профиль:\n{previous_summary or 'Профиль пока пустой.'}\n\n"
+                        f"Последние оценки:\n{assessment_text or 'Оценок пока нет.'}"
+                        f"{event_block}"
+                    ),
+                },
+            ],
+            temperature=0.25,
+            max_tokens=500,
+        )
+        user.profile_summary = extract_profile_summary(clean_generated_text(text, split_sections=True))
+    except Exception:
+        user.profile_summary = extract_profile_summary(fallback)
+
+    await db.flush()
 
 
 def calculate_status(score: int, token_balance: int) -> str:
@@ -365,7 +465,13 @@ async def create_assessment(
         user.subjectivity_score = round((user.subjectivity_score * 0.8) + (next_score * 0.2))
     else:
         user.subjectivity_score = next_score
-        user.profile_summary = result.summary
+        await refresh_user_profile_summary(
+            db,
+            user=user,
+            event_summary=result.summary,
+            event_source=source,
+            event_score=next_score,
+        )
     user.status = calculate_status(user.subjectivity_score, user.token_balance)
     await db.flush()
     return assessment, token_delta
