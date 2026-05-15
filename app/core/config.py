@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     public_webapp_url: str = "http://localhost:8000/app/shop"
     telegram_webhook_secret_token: str = ""
     closed_group_invite_url: str = "https://t.me/+jkSp6Vx8L35kYmRi"
-    system_entry_star_price: int = 1
+    system_entry_star_price: int = 10
     psycoin_per_star: int = 5
     psycoin_withdraw_min: int = 1000
     star_exchange_enabled: bool = True

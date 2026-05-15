@@ -141,8 +141,8 @@ async def test_morning_response_returns_dialogue_contract(monkeypatch) -> None:
     assert len(db.added) == 1
 
 
-def test_system_entry_default_price_is_one_star() -> None:
-    assert settings.system_entry_star_price == 1
+def test_system_entry_default_price_is_ten_stars() -> None:
+    assert settings.system_entry_star_price == 10
 
 
 def test_scheduler_targets_ten_oclock_moscow() -> None:
