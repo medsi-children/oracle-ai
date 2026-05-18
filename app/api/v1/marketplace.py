@@ -30,6 +30,7 @@ from app.services.stars import (
     create_star_invoice_link,
     create_withdrawal_request,
 )
+from app.services.telegram_auth import TelegramWebAppAuthError, verify_telegram_webapp_user
 
 router = APIRouter()
 DEFAULT_CLOSED_GROUP_INVITE_URL = "https://t.me/+jkSp6Vx8L35kYmRi"
@@ -69,10 +70,20 @@ def ensure_full_marketplace_access(user: User) -> None:
         raise HTTPException(status_code=403, detail="shop_locked_system_entry")
 
 
+def ensure_telegram_webapp_auth(telegram_id: int, init_data: str | None) -> None:
+    try:
+        verify_telegram_webapp_user(init_data, telegram_id)
+    except TelegramWebAppAuthError as exc:
+        raise HTTPException(status_code=401, detail=str(exc)) from exc
+
+
 @router.get("/state", response_model=MarketplaceState)
 async def marketplace_state(
-    telegram_id: int, db: AsyncSession = Depends(get_db)
+    telegram_id: int,
+    init_data: str | None = None,
+    db: AsyncSession = Depends(get_db),
 ) -> MarketplaceState:
+    ensure_telegram_webapp_auth(telegram_id, init_data)
     user = await get_user_by_telegram_id(db, telegram_id)
     ensure_marketplace_access(user)
     items = await list_active_items(db, user)
@@ -148,6 +159,7 @@ async def marketplace_state(
 
 @router.post("/buy", response_model=BuyResponse)
 async def buy(payload: BuyRequest, db: AsyncSession = Depends(get_db)) -> BuyResponse:
+    ensure_telegram_webapp_auth(payload.telegram_id, payload.init_data)
     user = await get_user_by_telegram_id(db, payload.telegram_id)
     ensure_full_marketplace_access(user)
     items = await list_active_items(db, user)
@@ -178,6 +190,7 @@ async def buy(payload: BuyRequest, db: AsyncSession = Depends(get_db)) -> BuyRes
 async def stars_topup(
     payload: StarTopUpRequest, db: AsyncSession = Depends(get_db)
 ) -> StarExchangeResponse:
+    ensure_telegram_webapp_auth(payload.telegram_id, payload.init_data)
     user = await get_user_by_telegram_id(db, payload.telegram_id)
     ensure_full_marketplace_access(user)
     if not settings.star_exchange_enabled:
@@ -225,6 +238,7 @@ async def stars_topup(
 async def stars_system_entry(
     payload: StarTopUpRequest, db: AsyncSession = Depends(get_db)
 ) -> StarExchangeResponse:
+    ensure_telegram_webapp_auth(payload.telegram_id, payload.init_data)
     user = await get_user_by_telegram_id(db, payload.telegram_id)
     ensure_marketplace_access(user)
     if user.lifecycle_status == "follower" or is_admin(user):
@@ -271,6 +285,7 @@ async def stars_system_entry(
 async def stars_withdraw(
     payload: StarWithdrawalRequestCreate, db: AsyncSession = Depends(get_db)
 ) -> StarExchangeResponse:
+    ensure_telegram_webapp_auth(payload.telegram_id, payload.init_data)
     user = await get_user_by_telegram_id(db, payload.telegram_id)
     ensure_full_marketplace_access(user)
     if not settings.star_exchange_enabled:

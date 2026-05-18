@@ -1100,6 +1100,7 @@ async def shop_app() -> str:
     const telegramId = String(
       qs.get('telegram_id') || tg?.initDataUnsafe?.user?.id || ''
     ).trim();
+    const initData = String(tg?.initData || qs.get('init_data') || '').trim();
 
     const notice = document.getElementById('notice');
     
@@ -1468,7 +1469,9 @@ async def shop_app() -> str:
         notice.textContent = msg;
         return null;
       }
-      const res = await fetch(`/api/v1/marketplace/state?telegram_id=${telegramIdNum}`);
+      const params = new URLSearchParams({telegram_id: String(telegramIdNum)});
+      if (initData) params.set('init_data', initData);
+      const res = await fetch(`/api/v1/marketplace/state?${params.toString()}`);
       if (res.status === 403) {
         showLocked();
         return null;
@@ -1522,6 +1525,7 @@ async def shop_app() -> str:
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({
             telegram_id: Number(telegramId),
+            init_data: initData,
             star_amount: currentState?.system_entry_star_price || 1
           })
         });
@@ -1566,6 +1570,7 @@ async def shop_app() -> str:
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({
             telegram_id: Number(telegramId),
+            init_data: initData,
             star_amount: starAmount
           })
         });
@@ -1628,6 +1633,7 @@ async def shop_app() -> str:
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({
             telegram_id: Number(telegramId),
+            init_data: initData,
             token_amount: tokenAmount
           })
         });
@@ -1806,7 +1812,7 @@ async def shop_app() -> str:
       const res = await fetch('/api/v1/marketplace/buy', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ telegram_id: Number(telegramId), item_id: itemId })
+        body: JSON.stringify({ telegram_id: Number(telegramId), init_data: initData, item_id: itemId })
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {

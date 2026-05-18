@@ -52,6 +52,7 @@ class MarketplaceState(BaseModel):
 
 class BuyRequest(BaseModel):
     telegram_id: int
+    init_data: str | None = None
     item_index: int | None = None
     item_id: UUID | None = None
 
@@ -66,11 +67,13 @@ class BuyResponse(BaseModel):
 
 class StarTopUpRequest(BaseModel):
     telegram_id: int
+    init_data: str | None = None
     star_amount: int
 
 
 class StarWithdrawalRequestCreate(BaseModel):
     telegram_id: int
+    init_data: str | None = None
     token_amount: int
 
 

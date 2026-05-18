@@ -5,7 +5,9 @@ from zoneinfo import ZoneInfo
 
 from app.core.config import settings
 from app.services.daily_tasks import (
+    AUTOMATED_MESSAGE_LIFECYCLES,
     MORNING_QUESTION_PREFIX,
+    can_start_morning_question,
     compact_oracle_thoughts,
     morning_fallback_question,
     morning_question_is_valid,
@@ -61,9 +63,16 @@ def test_morning_question_prefix_and_fallback_are_safe() -> None:
     assert MORNING_QUESTION_PREFIX == (
         "У Оракула для вас вопрос. Ответьте на него и заработаете псикоины."
     )
+    assert AUTOMATED_MESSAGE_LIFECYCLES == ("beginner", "follower")
     assert morning_question_is_valid(morning_fallback_question())
     assert not morning_question_is_valid("Ты субъект или объект?")
     assert not morning_question_is_valid("Что выберет терпила?")
+
+
+def test_morning_question_only_starts_from_idle_session() -> None:
+    assert can_start_morning_question(SimpleNamespace(state="active"))
+    assert not can_start_morning_question(SimpleNamespace(state="case:test:1"))
+    assert not can_start_morning_question(SimpleNamespace(state="solo:case:2"))
 
 
 def test_morning_question_replacement_request_is_detected() -> None:

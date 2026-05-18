@@ -119,34 +119,38 @@ async def send_outgoing_message(chat_id: int, message: OutgoingMessage) -> None:
         return
     reply_markup = to_telegram_reply_markup(message.reply_markup)
     for index, chunk in enumerate(chunks):
-        await send_message(
-            chat_id=chat_id,
-            text=chunk,
-            reply_markup=reply_markup if index == len(chunks) - 1 else None,
-            parse_mode="HTML",
-        )
+        chunk_reply_markup = reply_markup if index == len(chunks) - 1 else None
+        try:
+            await send_message(
+                chat_id=chat_id,
+                text=chunk,
+                reply_markup=chunk_reply_markup,
+                parse_mode="HTML",
+            )
+        except TelegramStarsError:
+            logger.warning(
+                "Telegram rejected HTML message; retrying without parse_mode",
+                exc_info=True,
+            )
+            await send_message(
+                chat_id=chat_id,
+                text=chunk,
+                reply_markup=chunk_reply_markup,
+            )
+
 
 async def delete_message(*, chat_id: int, message_id: int) -> None:
-
     try:
-
         await telegram_api(
-
             "deleteMessage",
-
             {
-
                 "chat_id": chat_id,
-
                 "message_id": message_id,
-
             },
-
         )
-
     except TelegramStarsError:
-
         logger.exception("Failed to delete telegram message")
+
 
 async def play_intro_animation(chat_id: int, response: MessageResponse) -> None:
     intro = response.intro_animation or []
@@ -224,14 +228,14 @@ async def send_telegram_response(
 
     chunks = split_telegram_text(response.reply)
 
-    if not chunks:
-        return
-
     if loading_message_id is not None:
         await delete_message(
             chat_id=chat_id,
             message_id=loading_message_id,
         )
+
+    if not chunks:
+        return
 
     for extra_message in response.extra_messages:
         await send_outgoing_message(chat_id, extra_message)

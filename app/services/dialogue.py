@@ -1626,6 +1626,18 @@ async def handle_user_text(
                     game_confirmation_reply_markup(),
                 )
 
+    if (
+        (session.state.startswith("case:") or session.state.startswith("news:"))
+        and command.startswith("/")
+        and command != "/help"
+    ):
+        return (
+            "Сейчас уже идет разбор. Ответьте на текущий вопрос или отмените сценарий командой /cancel.",
+            "scenario_in_progress",
+            0,
+            None,
+        )
+
     if command == "/help":
         return format_help(), "help", 0, None
     if command == "/weekly":

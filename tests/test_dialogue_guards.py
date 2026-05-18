@@ -58,6 +58,29 @@ async def test_onboarding_case_state_blocks_other_commands() -> None:
     assert markup is None
 
 
+async def test_active_case_state_blocks_new_commands() -> None:
+    user = SimpleNamespace(
+        lifecycle_status="follower",
+        username="tester",
+        status="object",
+    )
+    session = SimpleNamespace(state="case:00000000-0000-0000-0000-000000000000:1")
+
+    reply, mode, token_delta, markup = await handle_user_text(
+        None,
+        user=user,
+        session=session,
+        text="/news",
+        chat_id=123,
+        chat_type="private",
+    )
+
+    assert "уже идет разбор" in reply
+    assert mode == "scenario_in_progress"
+    assert token_delta == 0
+    assert markup is None
+
+
 async def test_morning_wait_can_replace_unclear_question(monkeypatch) -> None:
     async def fake_question() -> str:
         return (

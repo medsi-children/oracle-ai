@@ -9,6 +9,7 @@ from app.models.assessment import Assessment
 from app.models.message import Message
 from app.models.token import TokenLedgerEntry
 from app.models.user import User
+from app.services.daily_tasks import AUTOMATED_MESSAGE_LIFECYCLES
 from app.services.llm import clean_generated_text, openrouter_chat
 from app.services.phrasing import psycoins
 from app.services.telegram_delivery import send_message
@@ -126,9 +127,7 @@ async def send_weekly_reports_to_all_users() -> int:
     async with AsyncSessionLocal() as db:
         result = await db.execute(
             select(User).where(
-                User.lifecycle_status.in_(
-                    ["beginner", "follower", "seeker", "faithful", "keeper", "sighted", "subject"]
-                ),
+                User.lifecycle_status.in_(AUTOMATED_MESSAGE_LIFECYCLES),
                 User.telegram_id.is_not(None),
             )
         )
@@ -137,7 +136,7 @@ async def send_weekly_reports_to_all_users() -> int:
         for user in users:
             try:
                 report = await generate_weekly_report(db, user)
-                await send_message(chat_id=int(user.telegram_id), text=report, parse_mode="HTML")
+                await send_message(chat_id=int(user.telegram_id), text=report)
                 sent += 1
             except Exception:
                 continue

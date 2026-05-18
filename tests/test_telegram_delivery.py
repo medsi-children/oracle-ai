@@ -13,11 +13,13 @@ from app.services import telegram_delivery
 from app.services.telegram_delivery import (
     ALLOWED_UPDATES,
     direct_webhook_url,
+    send_outgoing_message,
     send_telegram_response,
     split_telegram_text,
     sync_direct_telegram_webhook,
     to_telegram_reply_markup,
 )
+from app.services.stars import TelegramStarsError
 
 
 def test_reply_markup_supports_callback_url_and_web_app_buttons() -> None:
@@ -124,6 +126,25 @@ async def test_send_telegram_response_sends_extra_messages_before_final(monkeypa
             [{"text": "Войти в систему", "web_app": {"url": "https://example.com/app/shop"}}]
         ]
     }
+
+
+async def test_send_outgoing_message_retries_without_html_when_telegram_rejects_parse_mode(
+    monkeypatch,
+) -> None:
+    calls = []
+
+    async def fake_telegram_api(method: str, payload: dict) -> dict:
+        calls.append((method, payload))
+        if payload.get("parse_mode") == "HTML":
+            raise TelegramStarsError("can't parse entities")
+        return {"ok": True, "result": {"message_id": 42}}
+
+    monkeypatch.setattr(telegram_delivery, "telegram_api", fake_telegram_api)
+
+    await send_outgoing_message(123, OutgoingMessage(text="2 < 3"))
+
+    assert [payload.get("parse_mode") for _, payload in calls] == ["HTML", None]
+    assert calls[-1][1]["text"] == "2 < 3"
 
 
 async def test_send_telegram_response_plays_intro_animation(monkeypatch) -> None:

@@ -23,6 +23,7 @@ from app.services.telegram_delivery import send_message
 MORNING_QUESTION_PREFIX = (
     "У Оракула для вас вопрос. Ответьте на него и заработаете псикоины."
 )
+AUTOMATED_MESSAGE_LIFECYCLES = ("beginner", "follower")
 FORBIDDEN_MORNING_TERMS = ("субъект", "объект", "терпила")
 MORNING_QUESTION_REPLACEMENT_MARKERS = (
     "другой вопрос",
@@ -91,6 +92,10 @@ def morning_question_replacement_requested(text: str) -> bool:
     return any(marker in lower for marker in MORNING_QUESTION_REPLACEMENT_MARKERS)
 
 
+def can_start_morning_question(session: ConversationSession) -> bool:
+    return session.state == "active"
+
+
 def compact_oracle_thoughts(summary: str) -> str:
     clean = " ".join(summary.split())
     if not clean:
@@ -156,17 +161,7 @@ async def send_morning_case_to_all_users() -> int:
     async with AsyncSessionLocal() as db:
         result = await db.execute(
             select(User).where(
-                User.lifecycle_status.in_(
-                    [
-                        "beginner",
-                        "follower",
-                        "seeker",
-                        "faithful",
-                        "keeper",
-                        "sighted",
-                        "subject",
-                    ]
-                ),
+                User.lifecycle_status.in_(AUTOMATED_MESSAGE_LIFECYCLES),
                 User.telegram_id.is_not(None),
             )
         )
@@ -175,6 +170,9 @@ async def send_morning_case_to_all_users() -> int:
 
         for user in users:
             try:
+                session = await get_or_create_morning_session(db, user)
+                if not can_start_morning_question(session):
+                    continue
                 question = await generate_morning_challenge_question()
                 await send_message(
                     chat_id=int(user.telegram_id),
@@ -184,7 +182,6 @@ async def send_morning_case_to_all_users() -> int:
                         "Ответьте одним сообщением. Чем честнее и точнее ответ, тем выше награда."
                     ),
                 )
-                session = await get_or_create_morning_session(db, user)
                 session.state = "morning:wait"
                 session.summary = json.dumps(
                     {"morning_question": question},
