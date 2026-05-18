@@ -59,6 +59,8 @@ from app.services.llm import SUPPORT_SYSTEM_PROMPT, clean_generated_text, openro
 from app.services.marketplace import buy_item, format_shop, user_owns_item_type
 from app.services.news import create_custom_news_case, get_or_create_news_case
 from app.services.phrasing import psycoins
+from app.services.reflection import build_response_reflection
+from app.services.weekly import generate_weekly_report
 
 ONBOARDING_CASE_COUNT = 7
 ONBOARDING_COMPLETED_SEPARATOR = "\n\n<!-- onboarding-final-message -->\n\n"
@@ -89,6 +91,7 @@ GAMEPLAY_CALLBACK_PREFIXES = (
     "bfinish:",
     "djoin:",
     "dfinish:",
+    "reflect:",
 )
 GAME_ACTION_LABELS = {
     "battle": "баттл",
@@ -197,6 +200,7 @@ async def get_recent_user_texts(
         message.content.strip()
         for message in messages
         if not message.content.strip().startswith("/")
+        and not message.message_metadata.get("callback_data")
     ]
     return list(reversed(texts[:limit]))
 
@@ -241,6 +245,17 @@ def first_contact_reply_markup() -> InlineKeyboardMarkup:
             [
                 InlineKeyboardButton(text="Я готов", callback_data="onboarding:ready"),
                 InlineKeyboardButton(text="Мне нужно время", callback_data="onboarding:later"),
+            ]
+        ]
+    )
+
+
+def reflection_reply_markup() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="Оставить как есть", callback_data="reflect:keep"),
+                InlineKeyboardButton(text="Переформулировать", callback_data="reflect:rewrite"),
             ]
         ]
     )
@@ -354,6 +369,14 @@ def build_probe_question(text: str, implicit: dict) -> str:
     return "Теперь точнее: какой мотив в твоем ответе самый неудобный для признания?"
 
 
+def format_reflection_prompt(message: str) -> str:
+    return (
+        "Ответ пока не фиксирую.\n\n"
+        f"{message}\n\n"
+        "Оставить ответ как есть или переформулировать?"
+    )
+
+
 async def build_supportive_reply_with_context(
     db: AsyncSession,
     *,
@@ -424,6 +447,23 @@ def write_session_payload(session: ConversationSession, payload: dict) -> None:
 
 def clear_session_payload(session: ConversationSession) -> None:
     session.summary = None
+
+
+def get_pending_reflection(session: ConversationSession) -> dict | None:
+    payload = read_session_payload(session).get("pending_reflection")
+    return payload if isinstance(payload, dict) else None
+
+
+def set_pending_reflection(session: ConversationSession, reflection: dict) -> None:
+    payload = read_session_payload(session)
+    payload["pending_reflection"] = reflection
+    write_session_payload(session, payload)
+
+
+def clear_pending_reflection(session: ConversationSession) -> None:
+    payload = read_session_payload(session)
+    payload.pop("pending_reflection", None)
+    write_session_payload(session, payload)
 
 
 def get_pending_game(session: ConversationSession) -> dict | None:
@@ -648,6 +688,7 @@ def format_help() -> str:
         "/shop — магазин псикоинов\n"
         "/buy 1 — купить предмет, привилегию или Сферу Мудрости\n"
         "/profile — посмотреть профиль и баланс\n"
+        "/weekly — недельный вердикт по динамике субъектности\n"
         "/help — показать это меню"
     )
 
@@ -718,11 +759,12 @@ async def build_onboarding_conclusion(
                     "role": "system",
                     "content": (
                         "Ты Оракул ETHOS. На основе семи первичных оценок дай пользователю "
-                        "краткий, прямой и эстетичный вывод. Без диагнозов. Нужно только: "
-                        "1) что видно по человеку, 2) зона роста. "
+                        "краткий и прямой вывод о субъектности. Без диагнозов. Нужно только: "
+                        "1) где человек уже берет управление, 2) где теряет управление или уходит "
+                        "в удобную формулировку, 3) какой навык тренировать следующим. "
                         "Не объясняй, что такое ETHOS, Субъект или Объект. "
                         "Не добавляй призыв войти в систему и не упоминай приложение. "
-                        "Без повторов. Обращение на 'вы'."
+                        "Без туманных формулировок, без повторов. Обращение на 'вы'."
                     ),
                 },
                 {
@@ -976,8 +1018,42 @@ async def handle_solo_game_turn(
     prompt = str(solo.get("prompt") or "")
     stake = int(solo.get("stake") or 0)
 
+    if step == "reflect":
+        return (
+            "Сначала выбери: оставить предыдущий ответ как есть или переформулировать.",
+            f"solo_{action}_reflection_waiting",
+            0,
+            reflection_reply_markup(),
+        )
+
     if step == "1":
         implicit = analyze_implicit_signals(text)
+        reflection = await build_response_reflection(
+            db,
+            user=user,
+            session=session,
+            activity_type=f"solo_{action}",
+            prompt=prompt,
+            answer=text,
+            implicit=implicit,
+        )
+        if reflection.should_reflect:
+            session.state = f"solo:{action}:reflect"
+            set_pending_reflection(
+                session,
+                {
+                    "activity_type": f"solo_{action}",
+                    "answer": text,
+                    "prompt": prompt,
+                    "implicit": implicit,
+                },
+            )
+            return (
+                format_reflection_prompt(reflection.message),
+                f"solo_{action}_reflection",
+                0,
+                reflection_reply_markup(),
+            )
         agent_reply = await generate_ai_agent_reply(
             activity_type=action,
             prompt=prompt,
@@ -1140,6 +1216,73 @@ async def handle_user_text(
         session.state = "active"
         clear_session_payload(session)
         return "Отменено. Можно начать заново: /battle, /case или /news.", "game_cancelled", 0, None
+
+    if clean in {"reflect:keep", "reflect:rewrite"}:
+        pending_reflection = get_pending_reflection(session)
+        if pending_reflection is None:
+            return "Ответ уже обработан. Продолжайте текущий сценарий.", "reflection_missing", 0, None
+        activity_type = str(pending_reflection.get("activity_type") or "")
+        answer = str(pending_reflection.get("answer") or "").strip()
+        prompt = str(pending_reflection.get("prompt") or "").strip()
+        implicit = pending_reflection.get("implicit")
+        implicit = implicit if isinstance(implicit, dict) else analyze_implicit_signals(answer)
+
+        if clean == "reflect:rewrite":
+            clear_pending_reflection(session)
+            if activity_type == "case":
+                case_id = str(pending_reflection.get("case_id") or "")
+                session.state = f"case:{case_id}:1"
+            elif activity_type == "news":
+                news_id = str(pending_reflection.get("news_id") or "")
+                session.state = f"news:{news_id}:1"
+            elif activity_type.startswith("solo_"):
+                action = activity_type.removeprefix("solo_") or "case"
+                session.state = f"solo:{action}:1"
+            return (
+                "Принято. Пришли новую формулировку. Не делай ее красивее — сделай ее точнее.",
+                "reflection_rewrite",
+                0,
+                None,
+            )
+
+        clear_pending_reflection(session)
+        if activity_type == "case":
+            case_id = str(pending_reflection.get("case_id") or "")
+            session.state = f"case:{case_id}:2"
+            return (
+                "Ответ фиксирую как есть. Теперь проверим мотив.\n\n"
+                + build_probe_question(answer, implicit),
+                "case_probe",
+                0,
+                None,
+            )
+        if activity_type == "news":
+            news_id = str(pending_reflection.get("news_id") or "")
+            session.state = f"news:{news_id}:2"
+            return (
+                "Позицию фиксирую как есть. Теперь отдели факт от своей реакции.\n\n"
+                + build_probe_question(answer, implicit),
+                "news_probe",
+                0,
+                None,
+            )
+        if activity_type.startswith("solo_"):
+            action = activity_type.removeprefix("solo_") or "case"
+            agent_reply = await generate_ai_agent_reply(
+                activity_type=action,
+                prompt=prompt,
+                user_text=answer,
+            )
+            store_solo_agent_turn(session, user_text=answer, agent_reply=agent_reply)
+            session.state = f"solo:{action}:2"
+            return (
+                f"{agent_reply}\n\nВопрос от Оракула: {build_probe_question(answer, implicit)}\n\n"
+                "Ваш финальный ход?",
+                f"solo_{action}_agent_reply",
+                0,
+                None,
+            )
+        return "Не понял, к какому сценарию относится ответ.", "reflection_bad_state", 0, None
 
     if clean.startswith("playmode:"):
         mode = clean.split(":", maxsplit=1)[1]
@@ -1485,6 +1628,8 @@ async def handle_user_text(
 
     if command == "/help":
         return format_help(), "help", 0, None
+    if command == "/weekly":
+        return await generate_weekly_report(db, user), "weekly_report", 0, None
     if command in {"/profile", "/status"}:
         return format_profile(user), "profile", 0, None
     if command == "/reset":
@@ -1628,6 +1773,13 @@ async def handle_user_text(
         parts = session.state.split(":")
         case_id = parts[1]
         step = parts[2] if len(parts) > 2 else "2"
+        if step == "reflect":
+            return (
+                "Сначала выберите: оставить предыдущий ответ как есть или переформулировать.",
+                "case_reflection_waiting",
+                0,
+                reflection_reply_markup(),
+            )
         result = await db.execute(select(Case).where(Case.id == UUID(case_id)))
         case = result.scalar_one_or_none()
         if case is None:
@@ -1641,6 +1793,33 @@ async def handle_user_text(
         latency = await get_last_assistant_latency_seconds(db, session)
         implicit = analyze_implicit_signals(clean, latency_seconds=latency)
         if step == "1":
+            reflection = await build_response_reflection(
+                db,
+                user=user,
+                session=session,
+                activity_type="case",
+                prompt=case.prompt,
+                answer=clean,
+                implicit=implicit,
+            )
+            if reflection.should_reflect:
+                session.state = f"case:{case.id}:reflect"
+                set_pending_reflection(
+                    session,
+                    {
+                        "activity_type": "case",
+                        "case_id": str(case.id),
+                        "answer": clean,
+                        "prompt": case.prompt,
+                        "implicit": implicit,
+                    },
+                )
+                return (
+                    format_reflection_prompt(reflection.message),
+                    "case_reflection",
+                    0,
+                    reflection_reply_markup(),
+                )
             session.state = f"case:{case.id}:2"
             return (
                 "Ответ зафиксирован. Теперь проверим мотив.\n\n"
@@ -1675,6 +1854,13 @@ async def handle_user_text(
         parts = session.state.split(":")
         news_id = parts[1]
         step = parts[2] if len(parts) > 2 else "2"
+        if step == "reflect":
+            return (
+                "Сначала выберите: оставить предыдущую позицию как есть или переформулировать.",
+                "news_reflection_waiting",
+                0,
+                reflection_reply_markup(),
+            )
         result = await db.execute(select(NewsItem).where(NewsItem.id == UUID(news_id)))
         item = result.scalar_one_or_none()
         if item is None:
@@ -1683,6 +1869,33 @@ async def handle_user_text(
         latency = await get_last_assistant_latency_seconds(db, session)
         implicit = analyze_implicit_signals(clean, latency_seconds=latency)
         if step == "1":
+            reflection = await build_response_reflection(
+                db,
+                user=user,
+                session=session,
+                activity_type="news",
+                prompt=item.ethical_case,
+                answer=clean,
+                implicit=implicit,
+            )
+            if reflection.should_reflect:
+                session.state = f"news:{item.id}:reflect"
+                set_pending_reflection(
+                    session,
+                    {
+                        "activity_type": "news",
+                        "news_id": str(item.id),
+                        "answer": clean,
+                        "prompt": item.ethical_case,
+                        "implicit": implicit,
+                    },
+                )
+                return (
+                    format_reflection_prompt(reflection.message),
+                    "news_reflection",
+                    0,
+                    reflection_reply_markup(),
+                )
             session.state = f"news:{item.id}:2"
             return (
                 "Позиция принята. Теперь отдели факт от своей реакции.\n\n"

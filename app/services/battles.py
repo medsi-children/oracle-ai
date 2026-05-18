@@ -31,8 +31,8 @@ COLLECTIBLE_BATTLE_BUFFS = {
     "💎 Бриллиантовое Сердце": 18,
 }
 DEFAULT_BATTLE_TOPIC = (
-    "Разберите спорный кейс так, чтобы не победить любой ценой, а сохранить достоинство, "
-    "точность аргументации и способность слышать другого."
+    "Разберите спорный кейс так, чтобы не победить шумом, а удержать позицию, "
+    "конкретику, контроль реакции и способность видеть последствия."
 )
 
 
@@ -140,10 +140,10 @@ async def generate_battle_topic() -> str:
                 {
                     "role": "system",
                     "content": (
-                        "Создай одну тему психологического баттла ETHOS на русском. "
+                        "Создай одну тему баттла ETHOS на русском. "
                         "Тема должна быть короткой, спорной, но не экстремистской; "
-                        "проверять субъектность, эмпатию, когнитивное смирение и "
-                        "эмоциональный суверенитет. Без markdown."
+                        "проверять субъектность, эмпатию, проверку реальности и "
+                        "контроль реакции под давлением. Без markdown."
                     ),
                 },
                 {"role": "user", "content": "Дай тему для группового баттла."},
@@ -398,12 +398,18 @@ async def judge_battle(
                 {
                     "role": "system",
                     "content": (
-                        "Ты ETHOS-судья психологического баттла. Выбери победителя по навыку: "
+                        "Ты ETHOS-судья баттла. Выбери победителя по навыку: "
                         "точность аргумента, честность, субъектность, способность слышать "
-                        "оппонента, эмоциональный суверенитет. Не выбирай по агрессии. "
+                        "оппонента, контроль реакции и готовность назвать цену выбора. "
+                        "Не выбирай по агрессии, громкости или красивому лозунгу. "
+                        "Добавь короткий комментарий Оракула: не инструкция как отвечать, "
+                        "а фиксация одного главного паттерна в аргументах обоих участников. "
+                        "Если слабость общая, скажи про обоих; если различие заметно, обозначь "
+                        "его без унижения. Без туманных формулировок и пафоса. "
                         "Верни только JSON: "
                         '{"winner_user_id":"uuid", "scores":{"uuid":0-100}, '
-                        '"summary":"краткий вердикт на русском"}.'
+                        '"summary":"краткий вердикт на русском", '
+                        '"oracle_comment":"короткий комментарий Оракула"}.'
                     ),
                 },
                 {"role": "user", "content": str(payload)},
@@ -422,6 +428,7 @@ async def judge_battle(
             "winner_user_id": winner_user_id,
             "scores": scores,
             "summary": str(raw.get("summary") or "Баттл оценен Оракулом."),
+            "oracle_comment": str(raw.get("oracle_comment") or "").strip(),
             "local": False,
         }
     except Exception as error:
@@ -431,6 +438,10 @@ async def judge_battle(
             "scores": fallback_scores,
             "summary": (
                 "Локальный вердикт: победил участник с более ясной и устойчивой аргументацией."
+            ),
+            "oracle_comment": (
+                "Комментарий Оракула: в финальной оценке выше ценится конкретика, контроль реакции "
+                "и готовность назвать цену выбора."
             ),
             "local": True,
             "error": str(error),
@@ -519,13 +530,16 @@ async def finish_active_battle(
     battle.result_summary = verdict["summary"]
     await db.flush()
 
+    oracle_comment = str(verdict.get("oracle_comment") or "").strip()
+    oracle_comment_block = f"\n\nКомментарий Оракула:\n{oracle_comment}" if oracle_comment else ""
     reply = (
         "Баттл завершен.\n\n"
         f"Тема: {battle.topic}\n\n"
         f"Победитель: {user_public_name(winner)}\n"
         f"Возврат взноса: {psycoins(winner_return)}\n"
         f"Награда системы: {psycoins(winner_reward)}\n\n"
-        f"{verdict['summary']}\n\n"
+        f"{verdict['summary']}"
+        f"{oracle_comment_block}\n\n"
         "Оценки:\n"
         + "\n".join(
             format_score_breakdown(user_public_name(user), score_breakdowns[user.id])

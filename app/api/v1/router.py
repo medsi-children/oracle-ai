@@ -26,3 +26,12 @@ async def trigger_morning_case():
     from app.services.daily_tasks import send_morning_case_to_all_users
     result = await send_morning_case_to_all_users()
     return {"status": "ok", "sent_to": result}
+
+
+@api_router.post("/weekly/send-reports", tags=["weekly"])
+async def trigger_weekly_reports():
+    """Trigger weekly ETHOS reports manually."""
+    from app.services.weekly import send_weekly_reports_to_all_users
+
+    result = await send_weekly_reports_to_all_users()
+    return {"status": "ok", "sent_to": result}

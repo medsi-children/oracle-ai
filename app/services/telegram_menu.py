@@ -7,10 +7,11 @@ from app.services.admins import admin_ids
 
 PRIVATE_COMMANDS = [
     {"command": "start", "description": "Начать путь ETHOS"},
+    {"command": "weekly", "description": "Недельный вердикт ETHOS"},
 ]
 
 GROUP_COMMANDS = [
-    {"command": "battle", "description": "Открыть психологический баттл"},
+    {"command": "battle", "description": "Открыть баттл ETHOS"},
     {"command": "battlefee", "description": "Выбрать уровень баттла"},
     {"command": "joinbattle", "description": "Войти в открытый баттл"},
     {"command": "finishbattle", "description": "Завершить баттл"},

@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     daily_morning_hour: int = 10
     daily_morning_minute: int = 0
     daily_morning_timezone: str = "Europe/Moscow"
+    weekly_reports_scheduler_enabled: bool = True
+    weekly_reports_weekday: int = 0
+    weekly_reports_hour: int = 11
+    weekly_reports_minute: int = 0
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

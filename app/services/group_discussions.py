@@ -236,11 +236,16 @@ async def judge_discussion(
                     "role": "system",
                     "content": (
                         "Ты ETHOS-судья группового обсуждения. Выбери до трех лучших вкладов "
-                        "по навыку: точность, честность, глубина, когнитивное смирение, "
-                        "эмпатия, отсутствие лозунгов и способность видеть другую сторону. "
+                        "по навыку: точность, честность, глубина, проверка реальности, "
+                        "эмпатия через действие, отсутствие лозунгов и способность видеть последствия. "
+                        "Добавь короткий комментарий Оракула о главном паттерне обсуждения: "
+                        "конкретика, цена выбора, уход в общие слова, контроль реакции или расхождение "
+                        "между принципом и действием. Не давай инструкций как отвечать. "
+                        "Без туманных формулировок и пафоса. "
                         "Верни только JSON: "
                         '{"winner_user_ids":["uuid"], "scores":{"uuid":0-100}, '
-                        '"summary":"краткий вердикт на русском"}.'
+                        '"summary":"краткий вердикт на русском", '
+                        '"oracle_comment":"короткий комментарий Оракула"}.'
                     ),
                 },
                 {"role": "user", "content": str(payload)},
@@ -265,6 +270,7 @@ async def judge_discussion(
             "winner_user_ids": winner_ids[:3],
             "scores": scores,
             "summary": str(raw.get("summary") or "Обсуждение оценено Оракулом."),
+            "oracle_comment": str(raw.get("oracle_comment") or "").strip(),
             "local": False,
         }
     except Exception as error:
@@ -274,6 +280,10 @@ async def judge_discussion(
             "scores": fallback_scores,
             "summary": (
                 "Локальный вердикт: выше оценены более ясные, честные и устойчивые позиции."
+            ),
+            "oracle_comment": (
+                "Комментарий Оракула: в обсуждении выше ценится конкретный выбор, контроль реакции "
+                "и способность видеть последствия для других."
             ),
             "local": True,
             "error": str(error),
@@ -368,9 +378,12 @@ async def finish_discussion(
     await db.flush()
 
     heading = "Кейс завершен." if discussion.discussion_type == "case" else "Новостной разбор завершен."
+    oracle_comment = str(verdict.get("oracle_comment") or "").strip()
+    oracle_comment_block = f"\n\nКомментарий Оракула:\n{oracle_comment}" if oracle_comment else ""
     reply = (
         f"{heading}\n\n"
-        f"{verdict['summary']}\n\n"
+        f"{verdict['summary']}"
+        f"{oracle_comment_block}\n\n"
         "Лучшие вклады:\n"
         + "\n".join(winners)
         + "\n\nОценки:\n"
