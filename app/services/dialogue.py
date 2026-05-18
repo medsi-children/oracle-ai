@@ -1734,7 +1734,7 @@ async def handle_user_text(
             )
         if user.lifecycle_status == "newbie" and not is_admin(user):
             return (
-                "Доступ откроется после входной проверки. Оракул ожидает вас в чате.",
+                "Ты здесь слишком рано. Ты еще не готов. Оракул ожидает тебя в чате.",
                 "shop_locked",
                 0,
                 None,

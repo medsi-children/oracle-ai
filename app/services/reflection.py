@@ -80,7 +80,7 @@ def local_reflection_from_signals(text: str, implicit: dict) -> ReflectionResult
     if implicit.get("appeasement_markers"):
         return ReflectionResult(
             True,
-            "Ответ звучит так, будто ты ищешь одобрения, а не формулируешь свою позицию. Сильная позиция выдерживает уточнение и спор.",
+            "Ты как будто пытаешься понравиться Оракулу, а не формулируешь свою позицию. Сильная позиция выдерживает уточнение и спор.",
             "appeasement",
         )
     if float(implicit.get("cliche_density") or 0) >= 0.18:

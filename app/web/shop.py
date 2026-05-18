@@ -945,7 +945,7 @@ async def shop_app() -> str:
 </head>
 <body>
   <div class="locked-view" id="lockedView">
-    Доступ откроется после входной проверки. Оракул ожидает вас в чате...
+    Ты здесь слишком рано. Ты еще не готов. Оракул ожидает тебя в чате...
   </div>
   <div class="entry-view" id="entryView">
     <div class="entry-shell">
@@ -1235,7 +1235,7 @@ async def shop_app() -> str:
     function showLocked() {
       document.body.classList.add('locked');
       document.body.classList.remove('entry');
-      lockedView.textContent = 'Доступ откроется после входной проверки. Оракул ожидает вас в чате';
+      lockedView.textContent = 'Ты здесь слишком рано. Ты еще не готов. Оракул ожидает тебя в чате';
     }
 
     // ==================== ADMIN PANEL WITH MODALS ====================
