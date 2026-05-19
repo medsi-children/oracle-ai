@@ -740,9 +740,33 @@ async def shop_app() -> str:
       font-weight: 800;
       color: var(--text);
     }
-    #profileBalance {
+    .profile-metric-wide {
+      grid-column: 1 / -1;
+    }
+    .profile-metric-primary strong {
+      font-size: 42px;
+      color: var(--accent-deep);
+    }
+    .profile-activity-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .profile-activity-item {
+      min-width: 0;
+    }
+    .profile-activity-item strong {
       display: block;
-      width: 100%;
+      font-size: 30px;
+      color: var(--text);
+    }
+    .profile-activity-item small {
+      display: block;
+      margin-top: 4px;
+      color: var(--text-soft);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
     }
     .profile-balance-value {
       display: inline-flex;
@@ -1157,7 +1181,7 @@ async def shop_app() -> str:
           <article class="card home-metric">
             <span>Баланс</span>
             <strong id="homeBalance">...</strong>
-            <p>Псикоины тратятся на Сферу, коллекцию и игровые сценарии.</p>
+            <p>Внутриигровые токены, которые можно тратить на улучшения, подписки и выводить в звёзды.</p>
           </article>
           <article class="card home-metric">
             <span>Трофеи</span>
@@ -1222,29 +1246,30 @@ async def shop_app() -> str:
         <div class="card profile-card">
           <div class="profile-status" id="profileStatus">...</div>
           <div class="profile-grid">
-            <div class="profile-metric">
-              <span>Баланс псикоинов</span>
-              <strong id="profileBalance">...</strong>
-            </div>
-            <div class="profile-metric">
-              <span>Заработано всего</span>
-              <strong id="profileEarned">...</strong>
-            </div>
-            <div class="profile-metric">
-              <span>Баттлы</span>
-              <strong id="profileBattles">...</strong>
-            </div>
-            <div class="profile-metric">
-              <span>Кейсы</span>
-              <strong id="profileCases">...</strong>
-            </div>
-            <div class="profile-metric">
-              <span>Новости</span>
-              <strong id="profileNews">...</strong>
-            </div>
-            <div class="profile-metric">
+            <div class="profile-metric profile-metric-wide profile-metric-primary">
               <span>Индекс субъектности</span>
               <strong id="profileScore">...</strong>
+            </div>
+            <div class="profile-metric profile-metric-wide">
+              <span>Заработано всего псикоинов</span>
+              <strong id="profileEarned">...</strong>
+            </div>
+            <div class="profile-metric profile-metric-wide">
+              <span>Активности</span>
+              <div class="profile-activity-row">
+                <div class="profile-activity-item">
+                  <strong id="profileBattles">...</strong>
+                  <small>Баттлы</small>
+                </div>
+                <div class="profile-activity-item">
+                  <strong id="profileCases">...</strong>
+                  <small>Кейсы</small>
+                </div>
+                <div class="profile-activity-item">
+                  <strong id="profileNews">...</strong>
+                  <small>Новости</small>
+                </div>
+              </div>
             </div>
           </div>
           <div class="profile-collectibles" id="profileCollectibles">
@@ -1317,7 +1342,6 @@ async def shop_app() -> str:
     const homeTrophies = document.getElementById('homeTrophies');
     const profileStatus = document.getElementById('profileStatus');
     const profileScore = document.getElementById('profileScore');
-    const profileBalance = document.getElementById('profileBalance');
     const profileEarned = document.getElementById('profileEarned');
     const profileBattles = document.getElementById('profileBattles');
     const profileCases = document.getElementById('profileCases');
@@ -1950,7 +1974,6 @@ async def shop_app() -> str:
       homeTrophies.innerHTML = renderTrophies(ownedTrophies, 'У вас сейчас нет трофеев.');
       profileStatus.textContent = statusLabels[data.status] || data.status;
       profileScore.textContent = `${data.subjectivity_score}/100`;
-      profileBalance.innerHTML = coinMarkup(data.currency_icon_url, data.token_balance, 'price profile-balance-value');
       profileEarned.innerHTML = coinMarkup(data.currency_icon_url, data.lifetime_tokens_earned || 0, 'price profile-balance-value');
       profileBattles.textContent = data.battles_completed || 0;
       profileCases.textContent = data.cases_completed || 0;
