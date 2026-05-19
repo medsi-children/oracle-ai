@@ -14,23 +14,24 @@ async def shop_app() -> str:
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <title>Магазин</title>
+  <title>ETHOS</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
     :root {
       color-scheme: light;
       font-family: "Avenir Next", "Helvetica Neue", system-ui, sans-serif;
-      --bg-1: #fbfafc;
-      --bg-2: #eef4f8;
+      --bg-1: #f7f9fb;
+      --bg-2: #e8eef2;
       --panel: rgba(255, 255, 255, .74);
       --panel-strong: rgba(255, 255, 255, .9);
       --line: rgba(116, 130, 148, .18);
       --text: #20242c;
       --text-soft: #68717d;
-      --accent: #ffc8d8;
-      --accent-strong: #f5a9c0;
-      --accent-deep: #d45f8b;
-      --coin: #edc46b;
+      --accent: #b9ddd5;
+      --accent-strong: #4fa99f;
+      --accent-deep: #2f6867;
+      --signal: #d96f8d;
+      --coin: #c99432;
       --shadow: 0 18px 50px rgba(72, 84, 102, .12);
     }
     * { box-sizing: border-box; }
@@ -39,8 +40,8 @@ async def shop_app() -> str:
       min-height: 100vh;
       color: var(--text);
       background:
-        radial-gradient(circle at 16% 0%, rgba(255, 200, 216, .24), transparent 30%),
-        radial-gradient(circle at 88% 18%, rgba(179, 202, 221, .22), transparent 30%),
+        linear-gradient(135deg, rgba(79, 169, 159, .12), transparent 38%),
+        linear-gradient(215deg, rgba(217, 111, 141, .11), transparent 42%),
         linear-gradient(180deg, var(--bg-1), var(--bg-2) 74%);
       overflow-x: hidden;
     }
@@ -225,7 +226,7 @@ async def shop_app() -> str:
     }
     .tabs {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 10px;
       margin-bottom: 16px;
     }
@@ -266,6 +267,103 @@ async def shop_app() -> str:
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 14px;
+    }
+    .home-stage {
+      display: grid;
+      gap: 14px;
+    }
+    .home-hero-card {
+      min-height: 280px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 210px;
+      gap: 24px;
+      align-items: center;
+      padding: 24px;
+    }
+    .home-copy {
+      display: grid;
+      gap: 14px;
+      position: relative;
+      z-index: 1;
+    }
+    .home-copy h2 {
+      font-size: clamp(32px, 6vw, 54px);
+      line-height: .98;
+      max-width: 620px;
+    }
+    .home-summary {
+      max-width: 620px;
+      color: var(--text-soft);
+      line-height: 1.55;
+      margin: 0;
+    }
+    .score-ring {
+      --score: 0;
+      width: min(52vw, 190px);
+      aspect-ratio: 1 / 1;
+      justify-self: end;
+      display: grid;
+      place-items: center;
+      border-radius: 999px;
+      background:
+        radial-gradient(circle at center, rgba(255, 255, 255, .92) 0 56%, transparent 57%),
+        conic-gradient(var(--accent-strong) calc(var(--score) * 1%), rgba(116, 130, 148, .16) 0);
+      box-shadow: 0 18px 44px rgba(72, 84, 102, .12);
+      position: relative;
+      z-index: 1;
+    }
+    .score-ring strong {
+      display: block;
+      font-size: clamp(40px, 9vw, 64px);
+      line-height: .9;
+    }
+    .score-ring span {
+      display: grid;
+      gap: 6px;
+      justify-items: center;
+      color: var(--text);
+    }
+    .score-ring small {
+      color: var(--text-soft);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+    .home-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .home-metric {
+      display: grid;
+      gap: 8px;
+      min-height: 132px;
+    }
+    .home-metric span {
+      color: var(--text-soft);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      position: relative;
+      z-index: 1;
+    }
+    .home-metric strong {
+      font-size: 30px;
+      line-height: 1.05;
+      position: relative;
+      z-index: 1;
+    }
+    .home-metric p {
+      margin: 0;
+      color: var(--text-soft);
+      line-height: 1.45;
+      position: relative;
+      z-index: 1;
+    }
+    .quick-actions {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
     }
     .card {
       position: relative;
@@ -893,6 +991,15 @@ async def shop_app() -> str:
           "balance balance";
       }
       .balance { width: 100%; }
+      .home-hero-card {
+        grid-template-columns: 1fr;
+      }
+      .score-ring {
+        justify-self: center;
+      }
+      .home-grid {
+        grid-template-columns: 1fr;
+      }
       .grid { grid-template-columns: 1fr; }
     }
     @media (max-width: 720px) {
@@ -926,12 +1033,15 @@ async def shop_app() -> str:
         width: 100%;
       }
       .tabs {
-        gap: 8px;
+        gap: 6px;
       }
       .tab {
         min-height: 44px;
-        font-size: 13px;
-        padding-inline: 6px;
+        font-size: 12px;
+        padding-inline: 4px;
+      }
+      .quick-actions {
+        grid-template-columns: 1fr;
       }
       .profile-grid {
         grid-template-columns: 1fr;
@@ -971,10 +1081,9 @@ async def shop_app() -> str:
   <main>
     <header>
       <div class="hero">
-        <h1>Магазин</h1>
+        <h1>Профиль ETHOS</h1>
         <p class="subline">
-          Коллекционные предметы, подписки и мудрость оракула
-          (персональные рекомендации)
+          Личный контур субъектности: индекс, баланс, Сфера Мудрости и коллекция.
         </p>
       </div>
       <button class="balance" id="balanceButton" type="button">
@@ -989,19 +1098,64 @@ async def shop_app() -> str:
       </button>
     </header>
 
-    <nav class="tabs" aria-label="Разделы магазина">
-      <button class="tab" data-tab="shop">Магазин</button>
-      <button class="tab active" data-tab="wisdom">Мудрость</button>
-      <button class="tab" data-tab="premium">Подписки</button>
+    <nav class="tabs" aria-label="Разделы ETHOS">
+      <button class="tab active" data-tab="home">Путь</button>
+      <button class="tab" data-tab="wisdom">Сфера</button>
+      <button class="tab" data-tab="shop">Коллекция</button>
+      <button class="tab" data-tab="premium">Доступ</button>
     </nav>
 
     <div class="notice" id="notice"></div>
+
+    <section class="panel active" id="homePanel">
+      <div class="home-stage">
+        <article class="card home-hero-card">
+          <div class="home-copy">
+            <div class="profile-status" id="homeStatus">...</div>
+            <h2>Ваш контур уже собирается</h2>
+            <p class="home-summary" id="homeSummary">
+              Оракул строит профиль по решениям, словам и реакции под давлением.
+            </p>
+          </div>
+          <div class="score-ring" id="homeScoreRing">
+            <span>
+              <strong id="homeScore">...</strong>
+              <small>индекс</small>
+            </span>
+          </div>
+        </article>
+
+        <div class="home-grid">
+          <article class="card home-metric">
+            <span>Баланс</span>
+            <strong id="homeBalance">...</strong>
+            <p>Псикоины тратятся на Сферу, коллекцию и игровые сценарии.</p>
+          </article>
+          <article class="card home-metric">
+            <span>Фокус</span>
+            <strong id="homeFocus">...</strong>
+            <p id="homeFocusText">Следующее действие появится после загрузки профиля.</p>
+          </article>
+          <article class="card home-metric">
+            <span>Инвентарь</span>
+            <strong id="homeInventory">...</strong>
+            <p>Трофеи усиливают баттлы и делают прогресс видимым.</p>
+          </article>
+        </div>
+
+        <div class="quick-actions">
+          <button class="buy" id="homeWisdomButton" type="button">Открыть Сферу</button>
+          <button class="buy" id="homeCollectionButton" type="button">Коллекция</button>
+          <button class="buy" id="homeBalanceButton" type="button">Баланс</button>
+        </div>
+      </div>
+    </section>
 
     <section class="panel" id="shopPanel">
       <div class="grid" id="items"></div>
     </section>
 
-    <section class="panel active" id="wisdomPanel">
+    <section class="panel" id="wisdomPanel">
       <div class="wisdom-stage">
         <div class="card wisdom-shell">
           <div class="sphere-wrap">
@@ -1111,6 +1265,7 @@ async def shop_app() -> str:
     }
 
     const balance = document.getElementById('balance');
+    const balanceButton = document.getElementById('balanceButton');
     const lockedView = document.getElementById('lockedView');
     const entryView = document.getElementById('entryView');
     const entryImage = document.getElementById('entryImage');
@@ -1118,6 +1273,17 @@ async def shop_app() -> str:
     const entryButton = document.getElementById('entryButton');
     const entryJoinLink = document.getElementById('entryJoinLink');
     const entryStatus = document.getElementById('entryStatus');
+    const homeStatus = document.getElementById('homeStatus');
+    const homeSummary = document.getElementById('homeSummary');
+    const homeScoreRing = document.getElementById('homeScoreRing');
+    const homeScore = document.getElementById('homeScore');
+    const homeBalance = document.getElementById('homeBalance');
+    const homeFocus = document.getElementById('homeFocus');
+    const homeFocusText = document.getElementById('homeFocusText');
+    const homeInventory = document.getElementById('homeInventory');
+    const homeWisdomButton = document.getElementById('homeWisdomButton');
+    const homeCollectionButton = document.getElementById('homeCollectionButton');
+    const homeBalanceButton = document.getElementById('homeBalanceButton');
     const profileStatus = document.getElementById('profileStatus');
     const profileScore = document.getElementById('profileScore');
     const profileBalance = document.getElementById('profileBalance');
@@ -1164,12 +1330,28 @@ async def shop_app() -> str:
 
     function escapeHTML(value) {
       return String(value ?? '').replace(/[&<>"']/g, char => ({
-        '&': '&',
-        '<': '<',
-        '>': '>',
-        '"': '"',
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
         "'": '&#039;'
       }[char]));
+    }
+
+    function focusForScore(score) {
+      if (score >= 85) {
+        return ['Мастерство', 'Удерживайте сложную позицию без жесткости и самодовольства.'];
+      }
+      if (score >= 70) {
+        return ['Точность', 'Добавляйте к принципам конкретные действия и последствия.'];
+      }
+      if (score >= 55) {
+        return ['Устойчивость', 'Замечайте первую реакцию и выбирайте ответ после короткой паузы.'];
+      }
+      if (score >= 40) {
+        return ['Границы', 'Называйте свое «да» и «нет» до того, как начнете подстраиваться.'];
+      }
+      return ['Пробуждение', 'Начните с одного честного ответа: чего вы избегаете прямо сейчас?'];
     }
 
     function typeLabel(type) {
@@ -1230,7 +1412,9 @@ async def shop_app() -> str:
     function openPanel(panelId) {
       document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
       document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
-      document.getElementById(panelId).classList.add('active');
+      document.getElementById(panelId)?.classList.add('active');
+      const tabName = panelId.endsWith('Panel') ? panelId.slice(0, -5) : '';
+      document.querySelector(`.tab[data-tab="${tabName}"]`)?.classList.add('active');
     }
 
     function showLocked() {
@@ -1261,7 +1445,7 @@ async def shop_app() -> str:
             <button onclick="openAdminModal('setlifecycle')" class="buy" style="width:100%; padding:16px; font-size:15px; text-align:left;">
               🔄 Установить системный статус
             </button>
-            <button onclick="openAdminModal('resetuser')" class="buy" style="width:100%; padding:16px; font-size:15px; text-align:left;">
+            <button onclick="openAdminModal('reset')" class="buy" style="width:100%; padding:16px; font-size:15px; text-align:left;">
               🔄 Сбросить профиль
             </button>
             <button onclick="openAdminModal('users')" class="buy" style="width:100%; padding:16px; font-size:15px; text-align:left;">
@@ -1352,7 +1536,7 @@ async def shop_app() -> str:
         `;
         currentCommand = '/setlifecycle';
       }
-      else if (action === 'resetuser') {
+      else if (action === 'reset') {
         title = 'Сбросить профиль';
         html = `
           <div>
@@ -1360,7 +1544,7 @@ async def shop_app() -> str:
             <input type="text" id="adminTargetId" class="admin-input" placeholder="@username">
           </div>
         `;
-        currentCommand = '/resetuser';
+        currentCommand = '/reset';
       }
       else if (action === 'users') {
         title = 'Показать пользователей';
@@ -1395,8 +1579,8 @@ async def shop_app() -> str:
         const lifecycle = document.getElementById('adminLifecycle')?.value || 'newbie';
         cmd = `/setlifecycle ${targetId || '@username'} ${lifecycle}`;
       }
-      else if (action === 'resetuser') {
-        cmd = `/resetuser ${targetId || '@username'}`;
+      else if (action === 'reset') {
+        cmd = `/reset ${targetId || '@username'}`;
       }
       else if (action === 'users') {
         cmd = '/users';
@@ -1689,7 +1873,7 @@ async def shop_app() -> str:
 
     async function load() {
       if (!telegramId) {
-        notice.textContent = 'Откройте магазин из Telegram или передайте telegram_id в ссылке.';
+        notice.textContent = 'Откройте ETHOS из Telegram или передайте telegram_id в ссылке.';
         console.error('load(): telegramId is empty');
         return;
       }
@@ -1717,6 +1901,9 @@ async def shop_app() -> str:
       const ownedInventory = data.inventory || [];
       const ownedPremium = data.purchases.find(item => item.item_type === 'privilege_custom_battle_topic');
       const premiumBadge = ownedPremium || null;
+      const score = Math.max(0, Math.min(100, Number(data.subjectivity_score || 0)));
+      const [focusTitle, focusText] = focusForScore(score);
+      const profileText = data.profile_summary || 'Психологический портрет еще формируется. Пройдите кейс или откройте Сферу, чтобы Оракул уточнил маршрут.';
 
       balance.innerHTML = renderBalance(data.currency_icon_url, data.token_balance, premiumBadge);
       walletCoinImage.src = data.currency_icon_url;
@@ -1725,10 +1912,18 @@ async def shop_app() -> str:
       walletAmount.textContent = data.token_balance;
       balanceDevCard.classList.remove('visible');
       balanceDevCard.innerHTML = '';
+      homeStatus.textContent = statusLabels[data.status] || data.status;
+      homeSummary.textContent = profileText;
+      homeScoreRing.style.setProperty('--score', score);
+      homeScore.textContent = score;
+      homeBalance.innerHTML = coinMarkup(data.currency_icon_url, data.token_balance, 'price profile-balance-value');
+      homeFocus.textContent = focusTitle;
+      homeFocusText.textContent = focusText;
+      homeInventory.textContent = `${ownedInventory.length}`;
       profileStatus.textContent = statusLabels[data.status] || data.status;
       profileScore.textContent = `${data.subjectivity_score}/100`;
       profileBalance.innerHTML = coinMarkup(data.currency_icon_url, data.token_balance, 'price profile-balance-value');
-      profileSummary.textContent = data.profile_summary || 'Психологический портрет еще формируется.';
+      profileSummary.textContent = profileText;
 
       if (ownedInventory.length) {
         profileCollectibles.classList.add('visible');
@@ -1831,12 +2026,15 @@ async def shop_app() -> str:
         document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
         document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
         button.classList.add('active');
-        document.getElementById(button.dataset.tab + 'Panel').classList.add('active');
+        document.getElementById(button.dataset.tab + 'Panel')?.classList.add('active');
       });
     });
 
     balanceButton.addEventListener('click', () => openPanel('balancePanel'));
     profileButton.addEventListener('click', () => openPanel('profilePanel'));
+    homeWisdomButton.addEventListener('click', () => openPanel('wisdomPanel'));
+    homeCollectionButton.addEventListener('click', () => openPanel('shopPanel'));
+    homeBalanceButton.addEventListener('click', () => openPanel('balancePanel'));
     entryButton.addEventListener('click', startSystemEntryPayment);
     withdrawStarsButton.addEventListener('click', renderWithdrawCard);
     topUpStarsButton.addEventListener('click', renderTopUpCard);
