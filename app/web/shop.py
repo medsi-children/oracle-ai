@@ -20,18 +20,17 @@ async def shop_app() -> str:
     :root {
       color-scheme: light;
       font-family: "Avenir Next", "Helvetica Neue", system-ui, sans-serif;
-      --bg-1: #f7f9fb;
-      --bg-2: #e8eef2;
+      --bg-1: #fbfafc;
+      --bg-2: #f7eef4;
       --panel: rgba(255, 255, 255, .74);
       --panel-strong: rgba(255, 255, 255, .9);
       --line: rgba(116, 130, 148, .18);
       --text: #20242c;
       --text-soft: #68717d;
-      --accent: #b9ddd5;
-      --accent-strong: #4fa99f;
-      --accent-deep: #2f6867;
-      --signal: #d96f8d;
-      --coin: #c99432;
+      --accent: #ffc8d8;
+      --accent-strong: #f5a9c0;
+      --accent-deep: #d45f8b;
+      --coin: #d45f8b;
       --shadow: 0 18px 50px rgba(72, 84, 102, .12);
     }
     * { box-sizing: border-box; }
@@ -40,8 +39,8 @@ async def shop_app() -> str:
       min-height: 100vh;
       color: var(--text);
       background:
-        linear-gradient(135deg, rgba(79, 169, 159, .12), transparent 38%),
-        linear-gradient(215deg, rgba(217, 111, 141, .11), transparent 42%),
+        radial-gradient(circle at 16% 0%, rgba(255, 200, 216, .24), transparent 30%),
+        radial-gradient(circle at 88% 18%, rgba(219, 194, 211, .22), transparent 30%),
         linear-gradient(180deg, var(--bg-1), var(--bg-2) 74%);
       overflow-x: hidden;
     }
@@ -187,6 +186,7 @@ async def shop_app() -> str:
     .balance-value .coin-amount {
       display: inline-block;
       line-height: inherit;
+      color: var(--coin);
     }
     .balance-value .coin-icon {
       width: 40px;
@@ -204,7 +204,7 @@ async def shop_app() -> str:
       font-weight: 800;
       letter-spacing: 0;
       text-shadow:
-        0 0 18px rgba(216, 154, 61, .14),
+        0 0 18px rgba(245, 169, 192, .18),
         0 1px 0 rgba(255, 255, 255, .18);
     }
     .vip-icon {
@@ -226,7 +226,7 @@ async def shop_app() -> str:
     }
     .tabs {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 10px;
       margin-bottom: 16px;
     }
@@ -331,7 +331,7 @@ async def shop_app() -> str:
     }
     .home-grid {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 14px;
     }
     .home-metric {
@@ -353,6 +353,14 @@ async def shop_app() -> str:
       position: relative;
       z-index: 1;
     }
+    .home-metric .profile-balance-value,
+    .home-metric .coin-amount,
+    .profile-metric .profile-balance-value,
+    .profile-metric .coin-amount {
+      color: var(--coin);
+      text-transform: none;
+      letter-spacing: 0;
+    }
     .home-metric p {
       margin: 0;
       color: var(--text-soft);
@@ -360,10 +368,33 @@ async def shop_app() -> str:
       position: relative;
       z-index: 1;
     }
-    .quick-actions {
+    .shop-stage, .shop-section {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 10px;
+      gap: 14px;
+    }
+    .shop-section + .shop-section {
+      margin-top: 6px;
+    }
+    .section-title {
+      color: var(--text-soft);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      padding: 0 4px;
+    }
+    .trophy-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(116px, 1fr));
+      gap: 12px;
+      position: relative;
+      z-index: 1;
+    }
+    .trophy-empty {
+      margin: 0;
+      color: var(--text-soft);
+      line-height: 1.45;
+      position: relative;
+      z-index: 1;
     }
     .card {
       position: relative;
@@ -409,7 +440,7 @@ async def shop_app() -> str:
       border: 1px solid var(--line);
       background:
         radial-gradient(circle at 30% 30%, rgba(255,255,255,.34), transparent 52%),
-        linear-gradient(180deg, #ffffff, #eef4f8);
+        linear-gradient(180deg, #ffffff, #fff3f7);
       box-shadow: 0 14px 26px rgba(72, 84, 102, .1);
       animation: itemPulse 6s ease-in-out infinite;
       opacity: 0;
@@ -456,13 +487,13 @@ async def shop_app() -> str:
       white-space: nowrap;
       background: rgba(255, 255, 255, .64);
     }
-    .badge.collectible { color: #b8863f; }
+    .badge.collectible { color: var(--accent-deep); }
     .badge.recommendation { color: #c76c98; }
     .badge.privilege { color: var(--accent-deep); }
     .badge.owned {
-      color: #a57836;
-      border-color: rgba(216, 154, 61, .18);
-      background: rgba(245, 237, 221, .56);
+      color: var(--accent-deep);
+      border-color: rgba(245, 169, 192, .24);
+      background: rgba(255, 236, 243, .62);
     }
     .item p, .profile-copy, .premium-copy {
       margin: 0;
@@ -585,7 +616,7 @@ async def shop_app() -> str:
       place-items: center;
       border-radius: 999px;
       background:
-        radial-gradient(circle, rgba(216, 154, 61, .12), rgba(216, 154, 61, 0) 62%);
+        radial-gradient(circle, rgba(245, 169, 192, .16), rgba(245, 169, 192, 0) 62%);
       animation: aura 7s ease-in-out infinite;
     }
     .wallet-coin {
@@ -720,7 +751,7 @@ async def shop_app() -> str:
       font-size: inherit;
       line-height: inherit;
       font-weight: inherit;
-      color: var(--text);
+      color: var(--coin);
     }
     .profile-balance-value .coin-amount {
       display: inline-block;
@@ -762,7 +793,7 @@ async def shop_app() -> str:
       border: 1px solid var(--line);
       background:
         radial-gradient(circle at 30% 30%, rgba(255,255,255,.32), transparent 52%),
-        linear-gradient(180deg, #ffffff, #eef4f8);
+        linear-gradient(180deg, #ffffff, #fff3f7);
       box-shadow: 0 10px 24px rgba(72, 84, 102, .1);
       opacity: 0;
       transition: opacity .28s ease, transform .28s ease;
@@ -823,7 +854,7 @@ async def shop_app() -> str:
       background:
         linear-gradient(110deg, rgba(255, 255, 255, .44) 20%, rgba(245, 169, 192, .14) 36%, rgba(255, 255, 255, .44) 52%),
         radial-gradient(circle at 30% 30%, rgba(255,255,255,.5), transparent 52%),
-        linear-gradient(180deg, rgba(255, 255, 255, .95), rgba(238, 244, 248, .98));
+        linear-gradient(180deg, rgba(255, 255, 255, .95), rgba(255, 243, 247, .98));
       background-size: 220% 100%, auto, auto;
       animation:
         imageShimmer 1.8s linear infinite,
@@ -1040,9 +1071,6 @@ async def shop_app() -> str:
         font-size: 12px;
         padding-inline: 4px;
       }
-      .quick-actions {
-        grid-template-columns: 1fr;
-      }
       .profile-grid {
         grid-template-columns: 1fr;
       }
@@ -1083,7 +1111,8 @@ async def shop_app() -> str:
       <div class="hero">
         <h1>Профиль ETHOS</h1>
         <p class="subline">
-          Личный контур субъектности: индекс, баланс, Сфера Мудрости и коллекция.
+          Коллекционные предметы, подписки и мудрость оракула
+          (персональные рекомендации)
         </p>
       </div>
       <button class="balance" id="balanceButton" type="button">
@@ -1099,10 +1128,9 @@ async def shop_app() -> str:
     </header>
 
     <nav class="tabs" aria-label="Разделы ETHOS">
+      <button class="tab" data-tab="shop">Магазин</button>
       <button class="tab active" data-tab="home">Путь</button>
-      <button class="tab" data-tab="wisdom">Сфера</button>
-      <button class="tab" data-tab="shop">Коллекция</button>
-      <button class="tab" data-tab="premium">Доступ</button>
+      <button class="tab" data-tab="wisdom">Мудрость</button>
     </nav>
 
     <div class="notice" id="notice"></div>
@@ -1132,27 +1160,24 @@ async def shop_app() -> str:
             <p>Псикоины тратятся на Сферу, коллекцию и игровые сценарии.</p>
           </article>
           <article class="card home-metric">
-            <span>Фокус</span>
-            <strong id="homeFocus">...</strong>
-            <p id="homeFocusText">Следующее действие появится после загрузки профиля.</p>
+            <span>Трофеи</span>
+            <div class="trophy-list" id="homeTrophies"></div>
           </article>
-          <article class="card home-metric">
-            <span>Инвентарь</span>
-            <strong id="homeInventory">...</strong>
-            <p>Трофеи усиливают баттлы и делают прогресс видимым.</p>
-          </article>
-        </div>
-
-        <div class="quick-actions">
-          <button class="buy" id="homeWisdomButton" type="button">Открыть Сферу</button>
-          <button class="buy" id="homeCollectionButton" type="button">Коллекция</button>
-          <button class="buy" id="homeBalanceButton" type="button">Баланс</button>
         </div>
       </div>
     </section>
 
     <section class="panel" id="shopPanel">
-      <div class="grid" id="items"></div>
+      <div class="shop-stage">
+        <div class="shop-section">
+          <div class="section-title">Подписки</div>
+          <div class="premium-stage" id="premiumBox"></div>
+        </div>
+        <div class="shop-section">
+          <div class="section-title">Коллекция</div>
+          <div class="grid" id="items"></div>
+        </div>
+      </div>
     </section>
 
     <section class="panel" id="wisdomPanel">
@@ -1171,10 +1196,6 @@ async def shop_app() -> str:
           </div>
         </div>
       </div>
-    </section>
-
-    <section class="panel" id="premiumPanel">
-      <div class="premium-stage" id="premiumBox"></div>
     </section>
 
     <section class="panel" id="balancePanel">
@@ -1202,19 +1223,34 @@ async def shop_app() -> str:
           <div class="profile-status" id="profileStatus">...</div>
           <div class="profile-grid">
             <div class="profile-metric">
+              <span>Баланс псикоинов</span>
+              <strong id="profileBalance">...</strong>
+            </div>
+            <div class="profile-metric">
+              <span>Заработано всего</span>
+              <strong id="profileEarned">...</strong>
+            </div>
+            <div class="profile-metric">
+              <span>Баттлы</span>
+              <strong id="profileBattles">...</strong>
+            </div>
+            <div class="profile-metric">
+              <span>Кейсы</span>
+              <strong id="profileCases">...</strong>
+            </div>
+            <div class="profile-metric">
+              <span>Новости</span>
+              <strong id="profileNews">...</strong>
+            </div>
+            <div class="profile-metric">
               <span>Индекс субъектности</span>
               <strong id="profileScore">...</strong>
             </div>
-            <div class="profile-metric">
-              <span>Баланс</span>
-              <strong id="profileBalance">...</strong>
-            </div>
           </div>
           <div class="profile-collectibles" id="profileCollectibles">
-            <div class="profile-collectibles-title">Инвентарь</div>
+            <div class="profile-collectibles-title">Коллекция трофеев</div>
             <div class="profile-collectibles-list" id="profileCollectiblesList"></div>
           </div>
-          <p class="profile-copy" id="profileSummary"></p>
         </div>
       </div>
     </section>
@@ -1278,16 +1314,14 @@ async def shop_app() -> str:
     const homeScoreRing = document.getElementById('homeScoreRing');
     const homeScore = document.getElementById('homeScore');
     const homeBalance = document.getElementById('homeBalance');
-    const homeFocus = document.getElementById('homeFocus');
-    const homeFocusText = document.getElementById('homeFocusText');
-    const homeInventory = document.getElementById('homeInventory');
-    const homeWisdomButton = document.getElementById('homeWisdomButton');
-    const homeCollectionButton = document.getElementById('homeCollectionButton');
-    const homeBalanceButton = document.getElementById('homeBalanceButton');
+    const homeTrophies = document.getElementById('homeTrophies');
     const profileStatus = document.getElementById('profileStatus');
     const profileScore = document.getElementById('profileScore');
     const profileBalance = document.getElementById('profileBalance');
-    const profileSummary = document.getElementById('profileSummary');
+    const profileEarned = document.getElementById('profileEarned');
+    const profileBattles = document.getElementById('profileBattles');
+    const profileCases = document.getElementById('profileCases');
+    const profileNews = document.getElementById('profileNews');
     const profileCollectibles = document.getElementById('profileCollectibles');
     const profileCollectiblesList = document.getElementById('profileCollectiblesList');
     const profileButton = document.getElementById('profileButton');
@@ -1338,22 +1372,6 @@ async def shop_app() -> str:
       }[char]));
     }
 
-    function focusForScore(score) {
-      if (score >= 85) {
-        return ['Мастерство', 'Удерживайте сложную позицию без жесткости и самодовольства.'];
-      }
-      if (score >= 70) {
-        return ['Точность', 'Добавляйте к принципам конкретные действия и последствия.'];
-      }
-      if (score >= 55) {
-        return ['Устойчивость', 'Замечайте первую реакцию и выбирайте ответ после короткой паузы.'];
-      }
-      if (score >= 40) {
-        return ['Границы', 'Называйте свое «да» и «нет» до того, как начнете подстраиваться.'];
-      }
-      return ['Пробуждение', 'Начните с одного честного ответа: чего вы избегаете прямо сейчас?'];
-    }
-
     function typeLabel(type) {
       if (type === 'wisdom_sphere') return ['recommendation', 'Сфера'];
       if (type.startsWith('privilege_')) return ['privilege', 'Подписка'];
@@ -1361,7 +1379,19 @@ async def shop_app() -> str:
     }
 
     function isInventoryType(type) {
-      return type === 'collectible' || type.startsWith('privilege_');
+      return type === 'collectible';
+    }
+
+    function renderTrophies(items, emptyText) {
+      if (!items.length) {
+        return `<p class="trophy-empty">${escapeHTML(emptyText)}</p>`;
+      }
+      return items.map(item => `
+        <div class="inventory-tile">
+          <img class="profile-collectible loading-image" src="${escapeHTML(item.image_url)}" alt="${escapeHTML(item.title)}" title="${escapeHTML(item.title)}" loading="lazy" decoding="async" />
+          <span>${escapeHTML(item.title)}</span>
+        </div>
+      `).join('');
     }
 
     function coinMarkup(iconUrl, amount, className = 'price') {
@@ -1899,10 +1929,10 @@ async def shop_app() -> str:
       const wisdom = data.items.find(item => item.item_type === 'wisdom_sphere');
       const premium = data.items.find(item => item.item_type.startsWith('privilege_'));
       const ownedInventory = data.inventory || [];
+      const ownedTrophies = ownedInventory.filter(item => item.item_type === 'collectible');
       const ownedPremium = data.purchases.find(item => item.item_type === 'privilege_custom_battle_topic');
       const premiumBadge = ownedPremium || null;
       const score = Math.max(0, Math.min(100, Number(data.subjectivity_score || 0)));
-      const [focusTitle, focusText] = focusForScore(score);
       const profileText = data.profile_summary || 'Психологический портрет еще формируется. Пройдите кейс или откройте Сферу, чтобы Оракул уточнил маршрут.';
 
       balance.innerHTML = renderBalance(data.currency_icon_url, data.token_balance, premiumBadge);
@@ -1917,26 +1947,17 @@ async def shop_app() -> str:
       homeScoreRing.style.setProperty('--score', score);
       homeScore.textContent = score;
       homeBalance.innerHTML = coinMarkup(data.currency_icon_url, data.token_balance, 'price profile-balance-value');
-      homeFocus.textContent = focusTitle;
-      homeFocusText.textContent = focusText;
-      homeInventory.textContent = `${ownedInventory.length}`;
+      homeTrophies.innerHTML = renderTrophies(ownedTrophies, 'У вас сейчас нет трофеев.');
       profileStatus.textContent = statusLabels[data.status] || data.status;
       profileScore.textContent = `${data.subjectivity_score}/100`;
       profileBalance.innerHTML = coinMarkup(data.currency_icon_url, data.token_balance, 'price profile-balance-value');
-      profileSummary.textContent = profileText;
+      profileEarned.innerHTML = coinMarkup(data.currency_icon_url, data.lifetime_tokens_earned || 0, 'price profile-balance-value');
+      profileBattles.textContent = data.battles_completed || 0;
+      profileCases.textContent = data.cases_completed || 0;
+      profileNews.textContent = data.news_completed || 0;
 
-      if (ownedInventory.length) {
-        profileCollectibles.classList.add('visible');
-        profileCollectiblesList.innerHTML = ownedInventory.map(item => `
-          <div class="inventory-tile">
-            <img class="profile-collectible loading-image" src="${escapeHTML(item.image_url)}" alt="${escapeHTML(item.title)}" title="${escapeHTML(item.title)}" loading="lazy" decoding="async" />
-            <span>${escapeHTML(item.title)}</span>
-          </div>
-        `).join('');
-      } else {
-        profileCollectibles.classList.remove('visible');
-        profileCollectiblesList.innerHTML = '';
-      }
+      profileCollectibles.classList.add('visible');
+      profileCollectiblesList.innerHTML = renderTrophies(ownedTrophies, 'У вас сейчас нет трофеев.');
 
       itemsBox.innerHTML = collectibles.map(item => {
         const [kind, label] = typeLabel(item.item_type);
@@ -2017,7 +2038,7 @@ async def shop_app() -> str:
       notice.textContent = data.message || 'Готово.';
       await load();
       if (isInventoryType(data.purchase_item_type || '')) {
-        showPurchaseOverlay('Поздравляем с покупкой', `${data.purchase_title || 'Предмет'} уже находится в вашем профиле, во вкладке Инвентарь.`);
+        showPurchaseOverlay('Поздравляем с покупкой', `${data.purchase_title || 'Предмет'} уже находится в коллекции трофеев.`);
       }
     }
 
@@ -2032,9 +2053,6 @@ async def shop_app() -> str:
 
     balanceButton.addEventListener('click', () => openPanel('balancePanel'));
     profileButton.addEventListener('click', () => openPanel('profilePanel'));
-    homeWisdomButton.addEventListener('click', () => openPanel('wisdomPanel'));
-    homeCollectionButton.addEventListener('click', () => openPanel('shopPanel'));
-    homeBalanceButton.addEventListener('click', () => openPanel('balancePanel'));
     entryButton.addEventListener('click', startSystemEntryPayment);
     withdrawStarsButton.addEventListener('click', renderWithdrawCard);
     topUpStarsButton.addEventListener('click', renderTopUpCard);

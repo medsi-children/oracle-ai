@@ -36,6 +36,10 @@ class MarketplaceState(BaseModel):
     telegram_id: int
     lifecycle_status: str
     token_balance: int
+    battles_completed: int = 0
+    cases_completed: int = 0
+    news_completed: int = 0
+    lifetime_tokens_earned: int = 0
     status: str
     subjectivity_score: int
     profile_summary: str | None

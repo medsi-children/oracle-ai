@@ -1,10 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.db.session import get_db
+from app.models.assessment import Assessment
+from app.models.battle import Battle, BattleParticipant
+from app.models.group_activity import GroupDiscussion, GroupDiscussionParticipant
 from app.models.marketplace import MarketplaceItem, MarketplacePurchase
+from app.models.token import TokenLedgerEntry
 from app.models.user import User
 from app.schemas.marketplace import (
     BuyRequest,
@@ -39,7 +43,11 @@ DEFAULT_CLOSED_GROUP_INVITE_URL = "https://t.me/+jkSp6Vx8L35kYmRi"
 async def get_user_by_telegram_id(db: AsyncSession, telegram_id: int) -> User:
     import logging
     logger = logging.getLogger(__name__)
-    logger.info(f"get_user_by_telegram_id called with telegram_id={telegram_id} (type: {type(telegram_id).__name__})")
+    logger.info(
+        "get_user_by_telegram_id called with telegram_id=%s (type: %s)",
+        telegram_id,
+        type(telegram_id).__name__,
+    )
     result = await db.execute(select(User).where(User.telegram_id == telegram_id))
     user = result.scalar_one_or_none()
     if user is None:
@@ -52,14 +60,21 @@ async def get_user_by_telegram_id(db: AsyncSession, telegram_id: int) -> User:
 def ensure_marketplace_access(user: User) -> None:
     import logging
     logger = logging.getLogger(__name__)
-    logger.info(f"ensure_marketplace_access: user={user.telegram_id}, lifecycle_status={user.lifecycle_status}")
+    logger.info(
+        "ensure_marketplace_access: user=%s, lifecycle_status=%s",
+        user.telegram_id,
+        user.lifecycle_status,
+    )
     if user.lifecycle_status == "admin":
         logger.info(f"ensure_marketplace_access: admin user, allowing access")
         return
     if user.lifecycle_status == "newbie" and not is_admin(user):
         logger.warning(f"ensure_marketplace_access: newbie user without admin flag, blocking access")
         raise HTTPException(status_code=403, detail="shop_locked_newbie")
-    logger.info(f"ensure_marketplace_access: allowing access for lifecycle_status={user.lifecycle_status}")
+    logger.info(
+        "ensure_marketplace_access: allowing access for lifecycle_status=%s",
+        user.lifecycle_status,
+    )
 
 
 def ensure_full_marketplace_access(user: User) -> None:
@@ -77,6 +92,74 @@ def ensure_telegram_webapp_auth(telegram_id: int, init_data: str | None) -> None
         raise HTTPException(status_code=401, detail=str(exc)) from exc
 
 
+async def count_scalar(db: AsyncSession, statement) -> int:
+    result = await db.execute(statement)
+    return int(result.scalar_one() or 0)
+
+
+async def build_user_marketplace_stats(db: AsyncSession, user: User) -> dict[str, int]:
+    battles_completed = await count_scalar(
+        db,
+        select(func.count())
+        .select_from(BattleParticipant)
+        .join(Battle, Battle.id == BattleParticipant.battle_id)
+        .where(BattleParticipant.user_id == user.id, Battle.status == "finished"),
+    )
+    solo_cases_completed = await count_scalar(
+        db,
+        select(func.count())
+        .select_from(Assessment)
+        .where(
+            Assessment.user_id == user.id,
+            Assessment.source.in_(["case_answer", "solo_case"]),
+        ),
+    )
+    group_cases_completed = await count_scalar(
+        db,
+        select(func.count())
+        .select_from(GroupDiscussionParticipant)
+        .join(GroupDiscussion, GroupDiscussion.id == GroupDiscussionParticipant.discussion_id)
+        .where(
+            GroupDiscussionParticipant.user_id == user.id,
+            GroupDiscussion.status == "finished",
+            GroupDiscussion.discussion_type == "case",
+        ),
+    )
+    solo_news_completed = await count_scalar(
+        db,
+        select(func.count())
+        .select_from(Assessment)
+        .where(
+            Assessment.user_id == user.id,
+            Assessment.source.in_(["news_sentinel", "solo_news"]),
+        ),
+    )
+    group_news_completed = await count_scalar(
+        db,
+        select(func.count())
+        .select_from(GroupDiscussionParticipant)
+        .join(GroupDiscussion, GroupDiscussion.id == GroupDiscussionParticipant.discussion_id)
+        .where(
+            GroupDiscussionParticipant.user_id == user.id,
+            GroupDiscussion.status == "finished",
+            GroupDiscussion.discussion_type == "news",
+        ),
+    )
+    lifetime_tokens_earned = await count_scalar(
+        db,
+        select(func.coalesce(func.sum(TokenLedgerEntry.amount), 0)).where(
+            TokenLedgerEntry.user_id == user.id,
+            TokenLedgerEntry.amount > 0,
+        ),
+    )
+    return {
+        "battles_completed": battles_completed,
+        "cases_completed": solo_cases_completed + group_cases_completed,
+        "news_completed": solo_news_completed + group_news_completed,
+        "lifetime_tokens_earned": lifetime_tokens_earned,
+    }
+
+
 @router.get("/state", response_model=MarketplaceState)
 async def marketplace_state(
     telegram_id: int,
@@ -86,6 +169,7 @@ async def marketplace_state(
     ensure_telegram_webapp_auth(telegram_id, init_data)
     user = await get_user_by_telegram_id(db, telegram_id)
     ensure_marketplace_access(user)
+    stats = await build_user_marketplace_stats(db, user)
     items = await list_active_items(db, user)
     purchases_result = await db.execute(
         select(MarketplacePurchase, MarketplaceItem)
@@ -124,6 +208,10 @@ async def marketplace_state(
         telegram_id=telegram_id,
         lifecycle_status=user.lifecycle_status,
         token_balance=user.token_balance,
+        battles_completed=stats["battles_completed"],
+        cases_completed=stats["cases_completed"],
+        news_completed=stats["news_completed"],
+        lifetime_tokens_earned=stats["lifetime_tokens_earned"],
         status=user.status,
         subjectivity_score=user.subjectivity_score,
         profile_summary=(
